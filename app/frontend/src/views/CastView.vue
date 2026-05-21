@@ -9,8 +9,10 @@ const store = useSessionStore();
 
 const countdown = ref(3);
 const submitting = ref(false);
+const slowNetwork = ref(false);
 const error = ref('');
 let calmTimer: ReturnType<typeof setInterval> | null = null;
+let slowTimer: ReturnType<typeof setTimeout> | null = null;
 let castPromise: Promise<string> | null = null;
 
 function startCast() {
@@ -31,6 +33,8 @@ async function finish() {
   if (calmTimer) { clearInterval(calmTimer); calmTimer = null; }
   if (!castPromise) return;
   submitting.value = true;
+  // 若 8 秒后还没结果，提示用户正在唤醒服务
+  slowTimer = setTimeout(() => { slowNetwork.value = true; }, 8000);
   try {
     const id = await castPromise;
     router.replace(`/result/${id}`);
@@ -38,6 +42,8 @@ async function finish() {
     error.value = err?.message || '视角生成失败，请稍后再试';
   } finally {
     submitting.value = false;
+    if (slowTimer) { clearTimeout(slowTimer); slowTimer = null; }
+    slowNetwork.value = false;
   }
 }
 
@@ -51,6 +57,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (calmTimer) clearInterval(calmTimer);
+  if (slowTimer) clearTimeout(slowTimer);
 });
 </script>
 
@@ -67,7 +74,10 @@ onUnmounted(() => {
       <p class="calm-tap">轻触屏幕跳过</p>
     </div>
 
-    <div v-if="submitting" class="loading-state">照见浮现中…</div>
+    <div v-if="submitting" class="loading-state">
+      <p>照见浮现中…</p>
+      <p v-if="slowNetwork" class="loading-slow">服务正在唤醒，稍候片刻…</p>
+    </div>
 
     <div v-if="error" class="error-block">
       <p class="error-text">{{ error }}</p>
@@ -139,6 +149,12 @@ onUnmounted(() => {
   padding: 120px 0;
   color: var(--c-muted);
   letter-spacing: 4px;
+}
+.loading-slow {
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  margin-top: 16px;
+  opacity: 0.6;
 }
 
 .error-block { padding: 60px 0; text-align: center; }
