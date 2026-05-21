@@ -1,0 +1,9 @@
+{
+  "buildCommand": "cd app/frontend && npm install && npm run build",
+  "outputDirectory": "app/frontend/dist",
+  "installCommand": "echo skip",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://zhaojian.onrender.com/api/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
