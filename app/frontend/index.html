@@ -14,5 +14,20 @@
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
+    <!-- 临时错误捕获，排查空白屏原因 -->
+    <script>
+      window.addEventListener('error', function(e) {
+        if (document.getElementById('app').childElementCount === 0) {
+          document.getElementById('app').innerHTML =
+            '<div style="padding:40px;font-size:13px;color:#c00;font-family:monospace;white-space:pre-wrap">JS Error:\n' + e.message + '\n' + (e.filename || '') + ':' + e.lineno + '</div>';
+        }
+      });
+      window.addEventListener('unhandledrejection', function(e) {
+        if (document.getElementById('app').childElementCount === 0) {
+          document.getElementById('app').innerHTML =
+            '<div style="padding:40px;font-size:13px;color:#c00;font-family:monospace;white-space:pre-wrap">Unhandled:\n' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)) + '</div>';
+        }
+      });
+    </script>
   </body>
 </html>
