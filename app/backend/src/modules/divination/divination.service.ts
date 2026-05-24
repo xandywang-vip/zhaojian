@@ -5,16 +5,18 @@ import { DivinationStore, DivinationRecord } from '../../common/store';
 import { AiService } from '../ai/ai.service';
 import { CastDto } from './divination.dto';
 import { canonicalGuaName, yaoPosName } from '../ai/ai.prompt';
+import { buildImageryKey } from '../../common/imagery-map';
+import { YAO_WHITELIST } from '../../common/yao-whitelist';
 
 @Injectable()
 export class DivinationService {
   constructor(private readonly store: DivinationStore, private readonly ai: AiService) {}
 
-  // Daily cast limit: 3 per IP per day (in-memory for MVP)
+  // Daily cast limit（in-memory，重启自动归零，够 MVP 用）
   private readonly dailyCounts = new Map<string, Map<string, number>>();
 
   private getDayKey(): string {
-    return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    return new Date().toISOString().slice(0, 10);
   }
 
   private checkDailyLimit(ip: string): void {
@@ -37,24 +39,32 @@ export class DivinationService {
   async castAndStore(dto: CastDto, clientIp = 'unknown'): Promise<DivinationRecord> {
     this.checkDailyLimit(clientIp);
 
-    // Use the engine to draw a hexagram. Time-based casting.
     const core = cast({ method: 'time' });
     const benGuaName  = canonicalGuaName(core.benGua.name);
     const bianGuaName = canonicalGuaName(core.bianGua.name);
-    const posName = yaoPosName(core.dongYao);
+    const posName     = yaoPosName(core.dongYao);
 
-    // 读取动爻爻辞原文，供 AI 判断凶/厉/吝
     let dongYaoCi: string | undefined;
+    let primaryImageryKey: string | null = null;
+    let displayYaoText:    string | null = null;
     try {
       const benRecord = loadHexagramRecord(core.benGua.id);
-      dongYaoCi = benRecord.yaoCi[core.dongYao - 1] ?? undefined;
-    } catch (_) { /* 找不到则省略 */ }
+      dongYaoCi         = benRecord.yaoCi[core.dongYao - 1] ?? undefined;
+      primaryImageryKey = buildImageryKey(benRecord.upper, benRecord.lower);
+
+      const hits = YAO_WHITELIST.filter(
+        e => e.guaId === core.benGua.id && e.yao === core.dongYao,
+      );
+      if (hits.length > 0) {
+        displayYaoText = hits[Math.floor(Math.random() * hits.length)].text;
+      }
+    } catch (_) { /* 卦数据找不到则省略 */ }
 
     const aiOutcome = await this.ai.generateReading({
       topic: dto.topic,
       benGuaName,
       bianGuaName,
-      dongYao: core.dongYao,
+      dongYao:    core.dongYao,
       yaoPosName: posName,
       dongYaoCi,
     });
@@ -63,79 +73,70 @@ export class DivinationService {
       topic: dto.topic,
       benGuaName,
       bianGuaName,
-      dongYao: core.dongYao,
+      dongYao:    core.dongYao,
       yaoPosName: posName,
-      castTrace: core.trace ?? null,
-      aiReading: aiOutcome.reading,
-      feedback: null,
+      castTrace:  core.trace ?? null,
+      aiReading:  aiOutcome.reading,
+      feedback:   null,
+      primaryImageryKey,
+      displayYaoText,
     });
   }
 
-  get(id: string): DivinationRecord | undefined {
+  async get(id: string): Promise<DivinationRecord | undefined> {
     return this.store.get(id);
   }
 
-  list(): DivinationRecord[] {
+  async list(): Promise<DivinationRecord[]> {
     return this.store.list();
   }
 
-  setFeedback(id: string, feedback: 'up' | 'down'): DivinationRecord | undefined {
+  async setFeedback(id: string, feedback: 'up' | 'down'): Promise<DivinationRecord | undefined> {
     return this.store.update(id, { feedback });
   }
 
-  /**
-   * 为一次解读生成追问问题，并落库到 record 上。
-   * 已生成过则直接返回；不重复消耗 AI 调用次数。
-   */
   async generateAndStoreQuestion(id: string): Promise<DivinationRecord | undefined> {
-    const record = this.store.get(id);
+    const record = await this.store.get(id);
     if (!record) return undefined;
     if (record.question) return record;
 
     const reading = (record.aiReading as any) || {};
-    const summary = [reading.present, reading.pivot].filter(Boolean).join(' ').slice(0, 80);
 
     const outcome = await this.ai.generateQuestion({
-      topic: record.topic,
-      benGuaName: record.benGuaName || '',
+      topic:       record.topic,
+      benGuaName:  record.benGuaName  || '',
       bianGuaName: record.bianGuaName || '',
-      dongYao: record.dongYao || 0,
-      yaoPosName: record.yaoPosName || '',
-      readingSummary: summary,
+      dongYao:     record.dongYao     || 0,
+      yaoPosName:  record.yaoPosName  || '',
+      reading: {
+        present: reading.present || '',
+        reframe: reading.pivot   || '',
+        tryThis: reading.tryThis || '',
+        oneLine: reading.oneLine || '',
+      },
     });
 
     return this.store.update(id, {
-      question: outcome.question,
+      question:       outcome.question,
       questionSource: outcome.source,
     });
   }
 
-  /**
-   * 保存用户对追问的回答。answer 为 null 表示"跳过"。
-   */
-  saveAnswer(id: string, answer: string | null): DivinationRecord | undefined {
+  async saveAnswer(id: string, answer: string | null): Promise<DivinationRecord | undefined> {
     return this.store.update(id, {
-      answer: answer ?? null,
+      answer:     answer ?? null,
       answeredAt: new Date().toISOString(),
     });
   }
 
-  /**
-   * 把解读收进心境墙（isSaved = true）。
-   * 独立于关怀语；点击主 CTA 立即调用，不依赖 careNote 是否填写。
-   */
-  saveToWall(id: string): DivinationRecord | undefined {
+  async saveToWall(id: string): Promise<DivinationRecord | undefined> {
     return this.store.update(id, {
       isSaved: true,
       savedAt: new Date().toISOString(),
     });
   }
 
-  /**
-   * 保存可选关怀语（care_note）。
-   * 独立于 isSaved；用户写完点"保存这句话"时调用。
-   */
-  saveCareNote(id: string, careNote: string): DivinationRecord | undefined {
+  async saveCareNote(id: string, careNote: string): Promise<DivinationRecord | undefined> {
     return this.store.update(id, { careNote });
   }
 }

@@ -35,6 +35,8 @@ export interface PublicDivination {
   isSaved: boolean;
   savedAt: string | null;
   careNote: string | null;
+  primaryImageryKey: string | null;
+  displayYaoText: string | null;
   createdAt: string;
   // Debug only
   castTrace?: CastTrace | null;
@@ -57,4 +59,35 @@ export interface CastTrace {
 
 export interface CastBody {
   topic: Topic;
+}
+
+// ── 心境墙专用类型 ─────────────────────────────────────────────────────────
+
+export interface WallCard {
+  id: string;
+  topic: string;
+  oneLiner: string;
+  dateLabel: string;
+  primaryImageryKey: string | null;
+  createdAt: string;
+  savedAt:   string | null;
+}
+
+export interface WallFullCard extends WallCard {
+  reading: {
+    present: string;
+    pivot:   string;
+    tryThis: string;
+    oneLine: string;
+  };
+  question:       string | null;
+  answer:         string | null;
+  careNote:       string | null;
+  displayYaoText: string | null;
+}
+
+export interface WallListResponse {
+  items:      WallCard[];
+  hasMore:    boolean;
+  nextCursor: string | null;
 }

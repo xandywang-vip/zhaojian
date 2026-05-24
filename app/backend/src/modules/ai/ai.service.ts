@@ -5,14 +5,21 @@ import { validateReading, FALLBACK_READING } from './ai.schema';
 import { AiInputPayload, AiReading } from './ai.types';
 import { scanReadingPayload } from '../../common/forbidden-words';
 import {
-  QUESTION_SYSTEM_PROMPT,
-  QUESTION_RETRY_HINT,
+  buildQuestionSystemPrompt,
   buildQuestionUserMessage,
-  inferYaoImage,
-  QuestionPromptInput,
+  QUESTION_RETRY_SYSTEM_HINT,
+  QuestionInputPayload,
+  parseQuestionOutput,
+  validateQuestion,
 } from './ai.question.prompt';
-import { validateQuestion, cleanQuestionOutput } from './question.validator';
 import { pickFallbackQuestion, QuestionType } from './question.fallback';
+
+/** 中文角度标注 → 英文 QuestionType */
+const ANGLE_TO_TYPE: Record<string, QuestionType> = {
+  '空间型': 'spatial',
+  '动力型': 'dynamic',
+  '因果型': 'causal',
+};
 
 export interface AiServiceOutcome {
   reading: AiReading;
@@ -134,16 +141,12 @@ export class AiService {
    *
    * 注意：单层 prompt 不可靠，兜底是合规要求，不是可选项。
    */
-  async generateQuestion(input: QuestionPromptInput): Promise<AiQuestionOutcome> {
+  async generateQuestion(input: QuestionInputPayload): Promise<AiQuestionOutcome> {
     const errors: string[] = [];
-    const payload: QuestionPromptInput = {
-      ...input,
-      yaoImage: input.yaoImage || inferYaoImage(input.benGuaName),
-    };
 
     if (!this.llm.isConfigured) {
       this.logger.warn('LLM 未配置，追问直接走兜底库');
-      const fb = pickFallbackQuestion(payload.topic);
+      const fb = pickFallbackQuestion(input.topic);
       return {
         question: fb.question.text,
         type: fb.type,
@@ -160,18 +163,21 @@ export class AiService {
       timeoutMs: Number(process.env.LLM_TIMEOUT_MS) || 20000,
     };
 
-    const systemPrompt = QUESTION_SYSTEM_PROMPT;
-    const userMessage = buildQuestionUserMessage(payload);
+    const systemPrompt = buildQuestionSystemPrompt();
+    const userMessage = buildQuestionUserMessage(input);
 
-    // 单次调用 + 校验，封装成内部函数
+    // 单次调用 + 解析 + 校验
     const tryOnce = async (
       attempt: number,
       withRetryHint: boolean,
-    ): Promise<{ ok: true; q: string } | { ok: false; reason: string }> => {
+    ): Promise<
+      | { ok: true; q: string; type: QuestionType | null }
+      | { ok: false; reason: string }
+    > => {
       const res = await this.llm.call({
         systemPrompt,
         userMessage,
-        extraSystem: withRetryHint ? QUESTION_RETRY_HINT : undefined,
+        extraSystem: withRetryHint ? QUESTION_RETRY_SYSTEM_HINT : undefined,
         temperature: knobs.temperature,
         maxTokens: knobs.maxTokens,
         timeoutMs: knobs.timeoutMs,
@@ -179,20 +185,29 @@ export class AiService {
       });
       if (!res.ok) return { ok: false, reason: `call#${attempt}: ${res.error}` };
 
-      const cleaned = cleanQuestionOutput(res.rawText);
-      const v = validateQuestion(cleaned);
-      if (!v.ok) {
-        return { ok: false, reason: `call#${attempt} validation: ${v.reason}; raw="${cleaned}"` };
+      const parsed = parseQuestionOutput(res.rawText);
+      if (!parsed) {
+        return { ok: false, reason: `call#${attempt}: bad format (expected 2 lines)` };
       }
-      return { ok: true, q: cleaned };
+      const v = validateQuestion(parsed.question);
+      if (!v.ok) {
+        return {
+          ok: false,
+          reason: `call#${attempt} validation: ${v.reason}; raw="${parsed.question}"; angle=${parsed.angle}`,
+        };
+      }
+      return { ok: true, q: parsed.question, type: ANGLE_TO_TYPE[parsed.angle] ?? null };
     };
 
     // 首次
     const first = await tryOnce(1, false);
     if (first.ok) {
-      return { question: first.q, type: 'fallback', source: 'llm', attempts: 1 };
-      // 注：type 暂时统一标记为 fallback（含义：未来由 AI 自分类后再细化）；
-      // 这里保留 source 字段区分来源（llm / fallback）
+      return {
+        question: first.q,
+        type: first.type ?? 'fallback',
+        source: 'llm',
+        attempts: 1,
+      };
     }
     errors.push(first.reason);
     this.logger.warn(`追问首次不合格：${first.reason}`);
@@ -200,7 +215,13 @@ export class AiService {
     // 重试 1
     const retry1 = await tryOnce(2, true);
     if (retry1.ok) {
-      return { question: retry1.q, type: 'fallback', source: 'llm-retry-1', attempts: 2, errors };
+      return {
+        question: retry1.q,
+        type: retry1.type ?? 'fallback',
+        source: 'llm-retry-1',
+        attempts: 2,
+        errors,
+      };
     }
     errors.push(retry1.reason);
     this.logger.warn(`追问重试1不合格：${retry1.reason}`);
@@ -208,13 +229,19 @@ export class AiService {
     // 重试 2
     const retry2 = await tryOnce(3, true);
     if (retry2.ok) {
-      return { question: retry2.q, type: 'fallback', source: 'llm-retry-2', attempts: 3, errors };
+      return {
+        question: retry2.q,
+        type: retry2.type ?? 'fallback',
+        source: 'llm-retry-2',
+        attempts: 3,
+        errors,
+      };
     }
     errors.push(retry2.reason);
     this.logger.warn(`追问重试2仍不合格，走兜底：${retry2.reason}`);
 
     // 兜底
-    const fb = pickFallbackQuestion(payload.topic);
+    const fb = pickFallbackQuestion(input.topic);
     return {
       question: fb.question.text,
       type: fb.type,

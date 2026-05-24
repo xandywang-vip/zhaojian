@@ -1,33 +1,33 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { getDivination, castDivination, sendFeedback, saveToWall, saveCareNote } from '../api/divination';
-import { useSessionStore } from '../stores/session';
-import type { PublicDivination, Topic } from '../api/types';
+import {
+  getDivination,
+  sendFeedback,
+  saveToWall,
+  saveAnswer,
+  generateQuestion,
+  CrisisDetectedError,
+} from '../api/divination';
+import type { PublicDivination } from '../api/types';
 
 const route = useRoute();
 const router = useRouter();
-const store = useSessionStore();
 
 const data = ref<PublicDivination | null>(null);
 const loading = ref(true);
 const error = ref('');
 const feedback = ref<'up' | 'down' | null>(null);
-const reroll = ref(false);
 const toast = ref('');
 
-// 心境墙保存状态
-const isSaved    = ref(false);
-const saving     = ref(false);
-const noteExpanded = ref(false);
-const noteText   = ref('');
-const noteSaving = ref(false);
-const noteSaved  = ref(false);
+// 追问 + 心境墙保存（合并为一个动作）
+const questionLoading = ref(false);
+const answerText      = ref('');
+const isSaved         = ref(false);
+const saving          = ref(false);
 
 const id = computed(() => String(route.params.id));
 
-// Strip any leading "此刻：" / "一个转念：" / "可以试试：" / "一句话：" prefixes
-// that the AI may include despite the prompt.
 function stripPrefix(text: string): string {
   return text.replace(/^\s*(?:此刻|一个转念|可以试试|一句话|此刻的你)\s*[:：]\s*/, '');
 }
@@ -46,15 +46,32 @@ async function load() {
       },
     };
     feedback.value = data.value?.feedback ?? null;
-    // 已保存过则直接进入已保存状态
-    if (data.value?.isSaved) {
-      isSaved.value = true;
-      if (data.value.careNote) noteSaved.value = true;
-    }
+
+    // 同步已保存状态 + 回填用户已写过的回答
+    if (data.value?.isSaved) isSaved.value = true;
+    if (data.value?.answer) answerText.value = data.value.answer;
+
+    // 后台异步生成追问问题（不阻塞主解读阅读）
+    if (!data.value?.question) fetchQuestion();
   } catch (err: any) {
     error.value = err?.message || '加载失败';
   } finally {
     loading.value = false;
+  }
+}
+
+async function fetchQuestion() {
+  if (questionLoading.value) return;
+  questionLoading.value = true;
+  try {
+    const updated = await generateQuestion(id.value);
+    if (data.value) {
+      data.value = { ...data.value, question: updated.question, questionSource: updated.questionSource };
+    }
+  } catch {
+    // 失败静默，问题区不会展示
+  } finally {
+    questionLoading.value = false;
   }
 }
 
@@ -65,61 +82,32 @@ async function chooseFeedback(value: 'up' | 'down') {
     await sendFeedback(id.value, value);
     showToast('感谢你的反馈');
   } catch {
-    // best-effort; UI keeps the selection
+    /* best-effort */
   }
 }
 
-async function reCast() {
-  if (!data.value || reroll.value) return;
-  reroll.value = true;
-  error.value = '';
-  try {
-    const next = await castDivination({ topic: data.value.topic as Topic });
-    router.replace(`/result/${next.id}`);
-  } catch (err: any) {
-    const msg = err?.message || '换一个视角失败，请稍后再试';
-    if (msg.includes('上限')) {
-      showToast('今日已达上限，明天再来吧');
-    } else {
-      showToast(msg);
-    }
-  } finally {
-    reroll.value = false;
-  }
-}
-
-async function handleSave() {
-  if (isSaved.value || saving.value) return;
+/** 收进心境墙：先写回答（若有），再标记 saved。命中危机词跳关怀页。 */
+async function handleSaveMoment() {
+  if (saving.value || isSaved.value) return;
   saving.value = true;
   try {
+    const text = answerText.value.trim();
+    if (text) {
+      // 走 answer 端点（含危机词检测）
+      await saveAnswer(id.value, text);
+    }
     await saveToWall(id.value);
     isSaved.value = true;
-    // 展开可选关怀语区域
-    noteExpanded.value = true;
-  } catch {
-    showToast('保存失败，请稍后再试');
+    showToast('已收进心境墙 ✓');
+  } catch (err) {
+    if (err instanceof CrisisDetectedError) {
+      router.push('/care');
+      return;
+    }
+    showToast((err as Error)?.message || '保存失败，请稍后再试');
   } finally {
     saving.value = false;
   }
-}
-
-async function handleSaveNote() {
-  const text = noteText.value.trim();
-  if (!text || noteSaving.value) return;
-  noteSaving.value = true;
-  try {
-    await saveCareNote(id.value, text);
-    noteSaved.value = true;
-    noteExpanded.value = false;
-  } catch {
-    showToast('保存失败，请稍后再试');
-  } finally {
-    noteSaving.value = false;
-  }
-}
-
-function handleSkipNote() {
-  noteExpanded.value = false;
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -129,11 +117,7 @@ function showToast(text: string) {
   toastTimer = setTimeout(() => { toast.value = ''; }, 2200);
 }
 
-onMounted(() => {
-  load();
-  // Keep store.ask.topic populated so a reload doesn't lose the topic chip.
-  // (Topic comes back via the API record itself, so no action needed.)
-});
+onMounted(() => { load(); });
 </script>
 
 <template>
@@ -153,23 +137,17 @@ onMounted(() => {
           <h3 class="section-title">此刻</h3>
           <p class="section-body">{{ data.reading.present }}</p>
         </section>
-
         <div class="section-divider" />
-
         <section class="section">
           <h3 class="section-title">一个转念</h3>
           <p class="section-body">{{ data.reading.pivot }}</p>
         </section>
-
         <div class="section-divider" />
-
         <section class="section">
           <h3 class="section-title">可以试试</h3>
           <p class="section-body">{{ data.reading.tryThis }}</p>
         </section>
-
         <div class="section-divider" />
-
         <section class="section section--oneline">
           <p class="oneline">{{ data.reading.oneLine }}</p>
         </section>
@@ -179,96 +157,61 @@ onMounted(() => {
       <div class="feedback">
         <span class="feedback-q">这个视角对你有启发吗？</span>
         <div class="feedback-btns">
-          <button
-            class="feedback-btn"
-            :class="{ 'is-active': feedback === 'up' }"
-            @click="chooseFeedback('up')"
-            aria-label="有启发"
-          >👍 有</button>
-          <button
-            class="feedback-btn"
-            :class="{ 'is-active': feedback === 'down' }"
-            @click="chooseFeedback('down')"
-            aria-label="没有启发"
-          >👎 没有</button>
+          <button class="feedback-btn" :class="{ 'is-active': feedback === 'up' }"   @click="chooseFeedback('up')">👍 有</button>
+          <button class="feedback-btn" :class="{ 'is-active': feedback === 'down' }" @click="chooseFeedback('down')">👎 没有</button>
         </div>
       </div>
 
-      <!-- Disclaimer (精简版) -->
-      <div class="disclaimer-box">
-        <p class="disclaimer-title">💡 温馨提示</p>
-        <p class="disclaimer-text">
-          这只是一个让你换角度看看的小工具。<br>
-          如果你正经历持续的痛苦，请联系专业的心理援助。
+      <!-- ── 此刻一问（内联，弱化呈现） ── -->
+      <section class="ask-block" v-if="data.question || questionLoading">
+        <p class="ask-eyebrow">◌ 此刻一问</p>
+        <p v-if="questionLoading && !data.question" class="ask-loading">问题生成中…</p>
+        <p v-else class="ask-question">{{ data.question }}</p>
+
+        <textarea
+          v-if="data.question"
+          v-model="answerText"
+          class="ask-input"
+          placeholder="对自己说点真心话…"
+          rows="4"
+          maxlength="500"
+          :disabled="isSaved || saving"
+        />
+        <p v-if="!isSaved && answerText.length > 0" class="ask-counter">{{ answerText.length }} / 500</p>
+      </section>
+
+      <!-- 单一主 CTA：收进心境墙（写了回答会一并保存） -->
+      <button
+        class="save-btn"
+        :class="{ 'is-saved': isSaved }"
+        :disabled="saving || isSaved"
+        @click="handleSaveMoment"
+      >
+        <span v-if="!isSaved">{{ saving ? '保存中…' : '🔖 收进心境墙' }}</span>
+        <span v-else class="saved-label">✓ 已收进心境墙</span>
+      </button>
+
+      <p v-if="isSaved" class="wall-link" @click="router.push('/wall')">
+        去心境墙看看 →
+      </p>
+
+      <!-- ── 页脚（温馨提示弱化） ── -->
+      <footer class="page-foot">
+        <p class="foot-disclaimer">
+          仅供参考。若你正经历持续的痛苦，请联系专业的心理援助。
         </p>
-      </div>
+        <span class="foot-link" @click="router.push('/')">返回首页 →</span>
+      </footer>
 
-      <!-- Action section -->
-      <div class="actions">
-
-        <!-- 主 CTA：保存 / 已保存 -->
-        <button
-          class="action-btn action-primary save-btn"
-          :class="{ 'is-saved': isSaved }"
-          :disabled="saving"
-          @click="handleSave"
-        >
-          <span v-if="!isSaved">{{ saving ? '保存中…' : '🔖 把这一刻收进我的心境墙' }}</span>
-          <span v-else class="saved-label">✓ 已收进心境墙</span>
-        </button>
-
-        <!-- 可选关怀语区域（保存后展开） -->
-        <div class="note-area" :class="{ 'is-open': noteExpanded }">
-          <div class="note-inner">
-            <p class="note-hint">想给现在的自己加一句话吗？一个词也可以。</p>
-            <input
-              v-model="noteText"
-              class="note-input"
-              type="text"
-              placeholder="比如：松了一点 / 先这样吧 / 看见了……"
-              maxlength="50"
-              :disabled="noteSaving"
-            />
-            <div class="note-btns">
-              <button
-                class="note-btn note-save"
-                :disabled="!noteText.trim() || noteSaving"
-                @click="handleSaveNote"
-              >{{ noteSaving ? '保存中…' : '保存这句话' }}</button>
-              <button class="note-btn note-skip" @click="handleSkipNote">跳过</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- 保存后：已记下反馈 + 心境墙入口 -->
-        <p v-if="noteSaved" class="noted-feedback">已记下 ✓</p>
-        <p v-if="isSaved" class="wall-link" @click="router.push('/wall')">
-          随时可在「心境墙」回看这一刻 →
-        </p>
-
-        <!-- 次 CTA -->
-        <button class="action-btn" :disabled="reroll" @click="reCast">
-          {{ reroll ? '生成中…' : '换一个视角' }}
-        </button>
-
-        <!-- 三级出口：文字链 -->
-        <span class="home-link" @click="router.push('/')">返回首页</span>
-
-      </div>
-
-      <!-- Debug panel — hexagram inspiration + cast trace (dev only) -->
+      <!-- Debug panel — hexagram inspiration + cast trace -->
       <div v-if="data.benGuaName || data.castTrace" class="debug-panel">
         <div class="debug-label">DEBUG · 起卦过程</div>
-
-        <!-- 卦象灵感 -->
         <div v-if="data.benGuaName" class="debug-row">
           <span class="debug-key">结果</span>
           <span class="debug-val">
             {{ data.benGuaName }}卦 {{ data.yaoPosName }}爻动 → {{ data.bianGuaName }}卦
           </span>
         </div>
-
-        <!-- 计算轨迹 -->
         <template v-if="data.castTrace">
           <div class="debug-divider" />
           <div class="debug-row">
@@ -296,7 +239,6 @@ onMounted(() => {
       </div>
     </template>
 
-    <!-- Toast -->
     <transition name="fade">
       <div v-if="toast" class="toast">{{ toast }}</div>
     </transition>
@@ -329,7 +271,7 @@ onMounted(() => {
   margin-bottom: 14px;
 }
 
-/* Main card */
+/* Reading card */
 .card {
   background: var(--c-paper);
   border: 1px solid var(--c-line);
@@ -371,7 +313,7 @@ onMounted(() => {
 
 /* Feedback */
 .feedback {
-  margin-top: 22px;
+  margin-top: 20px;
   text-align: center;
 }
 .feedback-q {
@@ -381,10 +323,7 @@ onMounted(() => {
   letter-spacing: 1px;
   margin-bottom: 10px;
 }
-.feedback-btns {
-  display: inline-flex;
-  gap: 10px;
-}
+.feedback-btns { display: inline-flex; gap: 10px; }
 .feedback-btn {
   border: 1px solid var(--c-line);
   background: var(--c-paper);
@@ -404,163 +343,95 @@ onMounted(() => {
   background: rgba(158, 123, 107, 0.06);
 }
 
-/* Disclaimer */
-.disclaimer-box {
+/* ── 此刻一问（弱化） ── */
+.ask-block {
   margin-top: 28px;
-  border: 1px dashed var(--c-line);
-  border-radius: var(--r-md);
-  padding: 16px 18px;
-  background: var(--c-bg-soft);
+  padding: 18px 18px 16px;
+  border-top: 1px dashed var(--c-line);
+  border-bottom: 1px dashed var(--c-line);
 }
-.disclaimer-title {
-  margin: 0 0 8px;
-  font-size: 12px;
-  color: var(--c-ink-soft);
-  letter-spacing: 1.5px;
-  font-weight: 500;
-}
-.disclaimer-text {
-  margin: 0;
-  font-size: 11.5px;
+.ask-eyebrow {
+  font-size: 11px;
   color: var(--c-muted);
+  letter-spacing: 4px;
+  margin: 0 0 10px;
+}
+.ask-loading {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--c-muted);
+  letter-spacing: 1.5px;
+  font-style: italic;
+}
+.ask-question {
+  margin: 0 0 14px;
+  font-size: 15px;
+  color: var(--c-ink-soft);
+  letter-spacing: 1px;
   line-height: 1.85;
-  letter-spacing: 0.3px;
 }
-
-/* Action buttons */
-.actions {
-  margin-top: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.action-btn {
+.ask-input {
+  width: 100%;
+  box-sizing: border-box;
   border: 1px solid var(--c-line);
   background: var(--c-paper);
   color: var(--c-ink);
   border-radius: var(--r-md);
-  padding: 14px 16px;
-  font-size: 14px;
-  letter-spacing: 1px;
-  cursor: pointer;
-  transition: background 0.18s, border-color 0.18s;
   font-family: inherit;
+  font-size: 14.5px;
+  padding: 12px 14px;
+  line-height: 1.8;
+  letter-spacing: 0.3px;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.action-btn:hover:not(:disabled) {
-  background: var(--c-bg-soft);
+.ask-input:focus {
   border-color: var(--c-accent);
+  box-shadow: 0 0 0 3px rgba(158,123,107,0.07);
 }
-.action-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-.action-primary {
-  background: var(--c-ink);
-  color: #F9F5F0;
-  border-color: var(--c-ink);
-}
-.action-primary:hover:not(:disabled) {
-  background: var(--c-ink);
-  border-color: var(--c-ink);
-  opacity: 0.92;
+.ask-input:disabled { opacity: 0.7; }
+.ask-input::placeholder { color: var(--c-muted); letter-spacing: 1px; }
+.ask-counter {
+  margin: 6px 0 0;
+  text-align: right;
+  font-size: 11px;
+  color: var(--c-muted);
 }
 
-/* 保存主 CTA 状态 */
-.save-btn { transition: background 0.25s, color 0.25s, border-color 0.25s, transform 0.2s; }
+/* 主 CTA */
+.save-btn {
+  display: block;
+  width: 100%;
+  margin-top: 22px;
+  padding: 14px 16px;
+  border: 1px solid var(--c-ink);
+  background: var(--c-ink);
+  color: #F9F5F0;
+  border-radius: var(--r-md);
+  font-size: 14px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.25s, color 0.25s, border-color 0.25s, transform 0.2s;
+}
+.save-btn:hover:not(:disabled):not(.is-saved) { opacity: 0.92; }
+.save-btn:disabled { cursor: default; opacity: 0.7; }
 .save-btn.is-saved {
   background: var(--c-paper);
   color: var(--c-accent);
   border-color: var(--c-accent);
   animation: savePop 0.28s ease both;
 }
+.saved-label { letter-spacing: 2px; }
 @keyframes savePop {
   0%   { transform: scale(1); }
   40%  { transform: scale(0.97); }
   100% { transform: scale(1); }
 }
-.saved-label { letter-spacing: 1.5px; }
 
-/* 可选关怀语区域 */
-.note-area {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.25s ease-out, opacity 0.22s ease-out;
-  opacity: 0;
-}
-.note-area.is-open {
-  max-height: 200px;
-  opacity: 1;
-}
-.note-inner {
-  background: var(--c-bg-soft);
-  border: 1px dashed var(--c-line);
-  border-radius: var(--r-md);
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.note-hint {
-  margin: 0;
-  font-size: 12px;
-  color: var(--c-muted);
-  letter-spacing: 0.5px;
-  line-height: 1.6;
-}
-.note-input {
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-md);
-  background: var(--c-paper);
-  color: var(--c-ink);
-  font-family: inherit;
-  font-size: 14px;
-  padding: 9px 12px;
-  outline: none;
-  width: 100%;
-  box-sizing: border-box;
-  letter-spacing: 0.3px;
-  transition: border-color 0.15s;
-}
-.note-input:focus { border-color: var(--c-accent); }
-.note-input::placeholder { color: var(--c-muted); }
-.note-btns {
-  display: flex;
-  gap: 8px;
-}
-.note-btn {
-  border-radius: var(--r-md);
-  padding: 7px 14px;
-  font-size: 13px;
-  cursor: pointer;
-  font-family: inherit;
-  letter-spacing: 0.5px;
-  transition: background 0.15s, border-color 0.15s;
-}
-.note-save {
-  border: 1px solid var(--c-ink);
-  background: var(--c-ink);
-  color: #F9F5F0;
-  flex: 1;
-}
-.note-save:disabled { opacity: 0.5; cursor: default; }
-.note-skip {
-  border: 1px solid var(--c-line);
-  background: transparent;
-  color: var(--c-muted);
-}
-.note-skip:hover { background: var(--c-paper); }
-
-/* 已记下 + 心境墙入口 */
-.noted-feedback {
-  margin: 0;
-  text-align: center;
-  font-size: 12px;
-  color: var(--c-accent);
-  letter-spacing: 2px;
-  animation: fadeInUp 0.3s ease both;
-}
 .wall-link {
-  margin: 0;
+  margin: 12px 0 0;
   text-align: center;
   font-size: 12.5px;
   color: var(--c-muted);
@@ -569,27 +440,36 @@ onMounted(() => {
   transition: color 0.15s;
 }
 .wall-link:hover { color: var(--c-accent); }
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
 
-/* 返回首页文字链 */
-.home-link {
-  display: block;
+/* 页脚（温馨提示弱化） */
+.page-foot {
+  margin-top: 36px;
+  padding-top: 20px;
+  border-top: 1px dashed var(--c-line);
   text-align: center;
-  margin-top: 14px;
-  font-size: 12.5px;
+}
+.foot-disclaimer {
+  margin: 0 0 10px;
+  font-size: 11px;
+  color: var(--c-muted);
+  letter-spacing: 0.5px;
+  line-height: 1.8;
+  opacity: 0.85;
+}
+.foot-link {
+  display: inline-block;
+  font-size: 11.5px;
   color: #999;
-  cursor: pointer;
   letter-spacing: 1px;
+  cursor: pointer;
+  padding: 4px 8px;
   transition: color 0.15s;
 }
-.home-link:hover { color: var(--c-muted); }
+.foot-link:hover { color: var(--c-muted); }
 
 /* Debug panel */
 .debug-panel {
-  margin-top: 32px;
+  margin-top: 24px;
   padding: 14px 16px;
   border: 1px dashed #C4B8AC;
   border-radius: var(--r-md);
@@ -603,38 +483,21 @@ onMounted(() => {
   margin-bottom: 8px;
   opacity: 0.7;
 }
-.debug-divider {
-  border-top: 1px dashed #C4B8AC;
-  margin: 8px 0;
-  opacity: 0.5;
-}
+.debug-divider { border-top: 1px dashed #C4B8AC; margin: 8px 0; opacity: 0.5; }
 .debug-row {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-  margin-bottom: 5px;
-  flex-wrap: wrap;
+  display: flex; gap: 8px; align-items: baseline;
+  margin-bottom: 5px; flex-wrap: wrap;
 }
 .debug-key {
-  font-size: 10px;
-  color: #9E7B6B;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-  min-width: 140px;
-  flex-shrink: 0;
+  font-size: 10px; color: #9E7B6B; letter-spacing: 0.5px;
+  white-space: nowrap; min-width: 140px; flex-shrink: 0;
 }
-.debug-val {
-  font-size: 11.5px;
-  color: #6B5848;
-  letter-spacing: 0.5px;
-  word-break: break-all;
-}
+.debug-val { font-size: 11.5px; color: #6B5848; letter-spacing: 0.5px; word-break: break-all; }
 
 /* Toast */
 .toast {
   position: fixed;
-  left: 50%;
-  bottom: 64px;
+  left: 50%; bottom: 64px;
   transform: translateX(-50%);
   background: rgba(40, 30, 20, 0.85);
   color: #F9F5F0;

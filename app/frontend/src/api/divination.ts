@@ -1,4 +1,4 @@
-import type { CastBody, PublicDivination } from './types';
+import type { CastBody, PublicDivination, WallCard, WallFullCard, WallListResponse } from './types';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -81,6 +81,25 @@ export function saveCareNote(id: string, careNote: string): Promise<PublicDivina
     method: 'POST',
     body: JSON.stringify({ careNote }),
   });
+}
+
+// ── 心境墙 API ────────────────────────────────────────────────────────────
+
+export function listWall(params?: { topic?: string; before?: string; limit?: number }): Promise<WallListResponse> {
+  const q = new URLSearchParams();
+  if (params?.topic)  q.set('topic',  params.topic);
+  if (params?.before) q.set('before', params.before);
+  if (params?.limit)  q.set('limit',  String(params.limit));
+  const qs = q.toString();
+  return request<WallListResponse>(`/wall${qs ? '?' + qs : ''}`);
+}
+
+export function getWallCard(id: string): Promise<WallFullCard> {
+  return request<WallFullCard>(`/wall/${id}`);
+}
+
+export function deleteWallCard(id: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/wall/${id}`, { method: 'DELETE' });
 }
 
 export async function saveAnswer(

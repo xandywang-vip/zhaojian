@@ -32,9 +32,10 @@ export function validateQuestion(raw: string): QuestionValidation {
   // 清洗：去掉首尾空白 + 末尾可能的标点重复
   const q = raw.trim();
 
-  // 长度：10–20 字（PRD 要求），实际放宽到 6–24 容忍 AI 略微偏差
+  // 长度：spec 要求 10–20 字（含问号）。
+  // 容忍 AI 微小偏差：下限放到 6，上限严格按 spec 卡 20。
   if (q.length < 6) return { ok: false, reason: `too short (${q.length})` };
-  if (q.length > 24) return { ok: false, reason: `too long (${q.length})` };
+  if (q.length > 20) return { ok: false, reason: `too long (${q.length})` };
 
   // 不能以"为什么"开头
   if (q.startsWith('为什么')) {
@@ -59,16 +60,68 @@ export function validateQuestion(raw: string): QuestionValidation {
 }
 
 /**
- * 清洗 AI 输出：去掉可能的引号包裹、前缀（"问题："等）、多行。
+ * 清洗 AI 输出：去掉可能的引号包裹、前缀（"问题："等）。
+ *
+ * @deprecated 仍保留单行清洗，但建议使用 parseQuestionOutput 同时拿到角度+问题。
  */
 export function cleanQuestionOutput(raw: string): string {
   if (!raw) return '';
   let s = raw.trim();
-  // 取第一行（如果 AI 多吐了）
   s = s.split(/\r?\n/)[0].trim();
-  // 去掉前后中英文引号
   s = s.replace(/^["'「『]+|["'」』]+$/g, '');
-  // 去掉常见前缀
   s = s.replace(/^(问题|追问|提问)\s*[:：]\s*/, '');
   return s.trim();
+}
+
+/** AI 输出按 spec 解析后的类型 */
+export type ParsedQuestionType = 'spatial' | 'dynamic' | 'causal';
+
+export interface ParsedQuestionOutput {
+  question: string;
+  /** AI 自标的角度；若识别不出会留空，由上层 fallback 决定 */
+  type: ParsedQuestionType | null;
+}
+
+const ANGLE_MAP: Record<string, ParsedQuestionType> = {
+  空间型: 'spatial',
+  动力型: 'dynamic',
+  因果型: 'causal',
+};
+
+/**
+ * 按 spec 解析两行输出：
+ *   第一行 = 角度（空间型 / 动力型 / 因果型）
+ *   第二行 = 问题
+ *
+ * 容错：
+ *   - 若只有一行，整行当作问题，type=null。
+ *   - 若 AI 把"角度："前缀写出来，会被剥掉。
+ *   - 若第一行不是合法角度，第一行也当作问题候选（取两行中更像问题的）。
+ */
+export function parseQuestionOutput(raw: string): ParsedQuestionOutput {
+  if (!raw) return { question: '', type: null };
+  const lines = raw
+    .split(/\r?\n/)
+    .map((l) =>
+      l
+        .trim()
+        .replace(/^["'「『]+|["'」』]+$/g, '')
+        .replace(/^(角度|分类|类型|问题|追问|提问)\s*[:：]\s*/, ''),
+    )
+    .filter(Boolean);
+
+  if (lines.length === 0) return { question: '', type: null };
+  if (lines.length === 1) {
+    // 只一行：可能直接给了问题
+    const only = lines[0];
+    const angle = ANGLE_MAP[only];
+    if (angle) return { question: '', type: angle }; // 只有角度没有问题，无效
+    return { question: only, type: null };
+  }
+
+  // 两行及以上：第一行试做角度
+  const first = lines[0];
+  const angle = ANGLE_MAP[first] || null;
+  const question = angle ? lines[1] : lines.find((l) => /[？?]/.test(l)) || lines[1];
+  return { question: question || '', type: angle };
 }

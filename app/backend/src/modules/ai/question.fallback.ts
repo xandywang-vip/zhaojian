@@ -35,17 +35,23 @@ const RELATION: FallbackQuestion[] = [
 ];
 
 const SELF: FallbackQuestion[] = [
-  { id: '09', text: '今天什么时刻，你觉得自己最不像自己？' },
+  { id: '09', text: '有个瞬间，你觉得自己最不像自己，是什么时候？' },
   { id: '10', text: '此刻如果给自己的状态写一个词，你会写什么？' },
 ];
 
-/** 主题 → 优先候选组（按重要性排序，第一个组作为首选随机源） */
+/**
+ * 主题 → 优先候选组（按重要性排序，第一个组作为首选随机源）。
+ * 与 spec themeMap 对齐：
+ *   工作与压力/选择与犹豫 → action
+ *   关系与情感/失落与疗愈 → relation
+ *   自我与成长/焦虑与平静 → self
+ */
 const TOPIC_GROUPS: Record<string, FallbackQuestion[][]> = {
   '工作与压力': [ACTION, WAITING, SELF],
   '关系与情感': [RELATION, WAITING, SELF],
   '自我与成长': [SELF, ACTION, RELATION],
   '选择与犹豫': [ACTION, WAITING, SELF],
-  '失落与疗愈': [SELF, RELATION, WAITING],
+  '失落与疗愈': [RELATION, SELF, WAITING],
   '焦虑与平静': [SELF, ACTION, RELATION],
 };
 

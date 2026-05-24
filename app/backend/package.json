@@ -7,7 +7,11 @@
     "start": "node dist/main.js",
     "start:dev": "ts-node --transpile-only src/main.ts",
     "test": "tsx test/engine.spec.ts",
-    "test:ai": "tsx test/ai-redact.spec.ts"
+    "test:ai": "tsx test/ai-redact.spec.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:push":     "drizzle-kit push",
+    "db:migrate":  "tsx src/db/migrate.ts",
+    "db:studio":   "drizzle-kit studio"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.0",
@@ -16,13 +20,16 @@
     "ajv": "^8.17.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.6.1",
+    "drizzle-orm": "^0.45.2",
     "lunar-javascript": "^1.7.7",
+    "postgres": "^3.4.9",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
     "@types/node": "^22.5.0",
+    "drizzle-kit": "^0.31.10",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0"

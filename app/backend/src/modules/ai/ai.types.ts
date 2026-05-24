@@ -13,3 +13,15 @@ export interface AiInputPayload {
   bianGuaName: string;
   dongYaoCi?:  string;   // 动爻爻辞原文，供 AI 判断凶/厉/吝
 }
+
+/**
+ * 追问生成所需的解读上下文。
+ * 追问必须读取 reframe（一个转念），以保证追问方向与转念一致。
+ * reframe 对应 AiReading.pivot。
+ */
+export interface ReadingContext {
+  present: string;   // 此刻
+  reframe: string;   // 一个转念 ← 追问必读，对应 AiReading.pivot
+  tryThis: string;   // 可以试试
+  oneLine: string;   // 金句
+}
