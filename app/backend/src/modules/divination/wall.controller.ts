@@ -11,10 +11,8 @@ import {
 } from '@nestjs/common';
 import { DivinationStore, DivinationRecord } from '../../common/store';
 
-// ── 卡片"一句话"取值逻辑（spec 第 2 节）────────────────────────────────────
-function getCardOneLiner(r: DivinationRecord): string {
-  if (r.careNote?.trim()) return r.careNote.trim();
-  if (r.answer?.trim())   return r.answer.trim();
+// ── 卡片"金句"取值（always 取 reading.oneLine）─────────────────────────────
+function getCardOneLine(r: DivinationRecord): string {
   try {
     const reading = r.aiReading as any;
     if (reading?.oneLine?.trim()) return reading.oneLine.trim();
@@ -22,32 +20,25 @@ function getCardOneLiner(r: DivinationRecord): string {
   return '一次照见。';
 }
 
-// ── 时段词（spec 3.2）────────────────────────────────────────────────────────
-function timePeriod(iso: string): string {
-  const h = new Date(iso).getHours();
-  if (h >= 5  && h < 7)  return '清晨';
-  if (h >= 7  && h < 11) return '上午';
-  if (h >= 11 && h < 14) return '午后';
-  if (h >= 14 && h < 17) return '下午';
-  if (h >= 17 && h < 19) return '傍晚';
-  if (h >= 19 && h < 23) return '夜';
-  return '深夜';
-}
-
+// ── 日期标签：YYYY.MM.DD 周X HH:MM ──────────────────────────────────────────
 function dateLabel(iso: string): string {
   const d = new Date(iso);
   const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const y   = d.getFullYear();
+  const m   = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
-  return `${y}.${m}.${day} 周${weekdays[d.getDay()]}${timePeriod(iso)}`;
+  const hh  = String(d.getHours()).padStart(2, '0');
+  const mm  = String(d.getMinutes()).padStart(2, '0');
+  return `${y}.${m}.${day} 周${weekdays[d.getDay()]} ${hh}:${mm}`;
 }
 
 // ── DTO ────────────────────────────────────────────────────────────────────
 interface WallCard {
   id: string;
   topic: string;
-  oneLiner: string;
+  oneLiner: string;                  // 金句（reading.oneLine）
+  question: string | null;           // 追问
+  answer:   string | null;           // 用户回答
   dateLabel: string;
   primaryImageryKey: string | null;
   createdAt: string;
@@ -56,19 +47,18 @@ interface WallCard {
 
 interface WallFullCard extends WallCard {
   reading: { present: string; pivot: string; tryThis: string; oneLine: string };
-  question:       string | null;
-  answer:         string | null;
   careNote:       string | null;
   displayYaoText: string | null;
 }
 
 function toCard(r: DivinationRecord): WallCard {
-  const ts = r.savedAt || r.createdAt;
   return {
     id:                r.id,
     topic:             r.topic,
-    oneLiner:          getCardOneLiner(r),
-    dateLabel:         dateLabel(ts),
+    oneLiner:          getCardOneLine(r),
+    question:          r.question ?? null,
+    answer:            r.answer   ?? null,
+    dateLabel:         dateLabel(r.createdAt),   // 起卦时间
     primaryImageryKey: r.primaryImageryKey ?? null,
     createdAt:         r.createdAt,
     savedAt:           r.savedAt ?? null,
@@ -85,8 +75,6 @@ function toFullCard(r: DivinationRecord): WallFullCard {
       tryThis: aiR.tryThis ?? '',
       oneLine: aiR.oneLine ?? '',
     },
-    question:       r.question       ?? null,
-    answer:         r.answer         ?? null,
     careNote:       r.careNote       ?? null,
     displayYaoText: r.displayYaoText ?? null,
   };

@@ -148,19 +148,16 @@ onMounted(() => loadList(true));
   margin: 0;
 }
 
-/* ── 筛选条 ──────────────────────────── */
+/* ── 筛选条（自适应换行） ─────────────── */
 .wall-view__filters {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;
   margin-bottom: 20px;
-  padding-bottom: 4px;
-  scrollbar-width: none;
 }
-.wall-view__filters::-webkit-scrollbar { display: none; }
 
 .wall-view__chip {
-  flex-shrink: 0;
+  flex: 0 0 auto;
   font-size: 13px;
   padding: 6px 14px;
   background: #FFFCF6;

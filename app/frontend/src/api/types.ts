@@ -66,7 +66,9 @@ export interface CastBody {
 export interface WallCard {
   id: string;
   topic: string;
-  oneLiner: string;
+  oneLiner: string;          // 金句（reading.oneLine）
+  question: string | null;   // 追问
+  answer:   string | null;   // 用户回答
   dateLabel: string;
   primaryImageryKey: string | null;
   createdAt: string;
@@ -80,8 +82,6 @@ export interface WallFullCard extends WallCard {
     tryThis: string;
     oneLine: string;
   };
-  question:       string | null;
-  answer:         string | null;
   careNote:       string | null;
   displayYaoText: string | null;
 }

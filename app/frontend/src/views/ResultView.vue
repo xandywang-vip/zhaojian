@@ -137,17 +137,14 @@ onMounted(() => { load(); });
           <h3 class="section-title">此刻</h3>
           <p class="section-body">{{ data.reading.present }}</p>
         </section>
-        <div class="section-divider" />
         <section class="section">
           <h3 class="section-title">一个转念</h3>
           <p class="section-body">{{ data.reading.pivot }}</p>
         </section>
-        <div class="section-divider" />
         <section class="section">
           <h3 class="section-title">可以试试</h3>
           <p class="section-body">{{ data.reading.tryThis }}</p>
         </section>
-        <div class="section-divider" />
         <section class="section section--oneline">
           <p class="oneline">{{ data.reading.oneLine }}</p>
         </section>
@@ -279,7 +276,7 @@ onMounted(() => { load(); });
   padding: 24px 22px;
   box-shadow: var(--shadow-soft);
 }
-.section { padding: 6px 0; }
+.section { padding: 14px 0; }
 .section-title {
   font-size: 13px;
   color: #9E7B6B;
@@ -294,12 +291,7 @@ onMounted(() => { load(); });
   color: #4B4B4B;
   letter-spacing: 0.3px;
 }
-.section-divider {
-  height: 1px;
-  border-top: 1px dashed var(--c-line);
-  margin: 16px 0;
-}
-.section--oneline { padding-top: 0; }
+.section--oneline { padding-top: 18px; }
 .oneline {
   margin: 0;
   font-size: 16px;
@@ -313,28 +305,31 @@ onMounted(() => { load(); });
 
 /* Feedback */
 .feedback {
-  margin-top: 20px;
-  text-align: center;
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 .feedback-q {
-  display: block;
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--c-muted);
-  letter-spacing: 1px;
-  margin-bottom: 10px;
+  letter-spacing: 0.5px;
 }
-.feedback-btns { display: inline-flex; gap: 10px; }
+.feedback-btns { display: inline-flex; gap: 6px; }
 .feedback-btn {
   border: 1px solid var(--c-line);
   background: var(--c-paper);
   color: var(--c-ink-soft);
   border-radius: 999px;
-  padding: 6px 16px;
-  font-size: 12.5px;
+  padding: 3px 10px;
+  font-size: 11.5px;
   cursor: pointer;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
   transition: background 0.18s, border-color 0.18s, color 0.18s;
   font-family: inherit;
+  line-height: 1.4;
 }
 .feedback-btn:hover { background: var(--c-bg-soft); }
 .feedback-btn.is-active {
@@ -345,10 +340,8 @@ onMounted(() => { load(); });
 
 /* ── 此刻一问（弱化） ── */
 .ask-block {
-  margin-top: 28px;
+  margin-top: 24px;
   padding: 18px 18px 16px;
-  border-top: 1px dashed var(--c-line);
-  border-bottom: 1px dashed var(--c-line);
 }
 .ask-eyebrow {
   font-size: 11px;
@@ -445,7 +438,6 @@ onMounted(() => { load(); });
 .page-foot {
   margin-top: 36px;
   padding-top: 20px;
-  border-top: 1px dashed var(--c-line);
   text-align: center;
 }
 .foot-disclaimer {
