@@ -61,6 +61,8 @@ const timeIcon = computed(() => {
       心境墙 →
     </button>
 
+    <p class="home-footer">让心里转的事，慢一点</p>
+
   </main>
 </template>
 
@@ -127,7 +129,7 @@ const timeIcon = computed(() => {
   background: var(--c-paper);
   border: 1px solid var(--c-line);
   border-radius: var(--r-lg);
-  padding: 22px 22px 20px;
+  padding: 18px 20px 16px;
   box-shadow: var(--shadow-soft);
   margin-bottom: 28px;
 }
@@ -148,7 +150,7 @@ const timeIcon = computed(() => {
   letter-spacing: 1px;
 }
 .hook-hint {
-  margin: 26px 0 0;
+  margin: 16px 0 0;
   font-size: 13px;
   color: var(--c-muted);
   letter-spacing: 0.4px;
@@ -164,7 +166,7 @@ const timeIcon = computed(() => {
 .secondary-cta {
   display: block;
   width: 100%;
-  margin-top: 16px;
+  margin-top: 36px;
   background: none;
   border: none;
   padding: 6px 0;
@@ -177,5 +179,14 @@ const timeIcon = computed(() => {
   transition: color 0.18s;
 }
 .secondary-cta:hover { color: var(--c-ink); }
+
+.home-footer {
+  margin-top: 68px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--c-muted);
+  letter-spacing: 0.4px;
+  opacity: 0.75;
+}
 
 </style>
