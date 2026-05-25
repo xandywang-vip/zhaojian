@@ -5,7 +5,7 @@
  * 但全部变为 async，调用方需 await。
  */
 import { Injectable } from '@nestjs/common';
-import { eq, and, desc, lt } from 'drizzle-orm';
+import { eq, and, desc, lt, gte } from 'drizzle-orm';
 import { db } from '../db/client';
 import { divinations, type DivinationRow } from '../db/schema';
 import type { CastTrace } from '../engine/casting';
@@ -151,7 +151,8 @@ export class DivinationStore {
    */
   async listWall(opts: {
     topic?:  string;
-    before?: string;   // savedAt 游标（ISO string）
+    before?: string;   // savedAt 游标（ISO string，分页用）
+    after?:  string;   // savedAt 下界（ISO string，时间筛选用）
     limit?:  number;
   }): Promise<DivinationRecord[]> {
     const limit = (opts.limit ?? 20) + 1;   // +1 for hasMore detection
@@ -159,6 +160,7 @@ export class DivinationStore {
     const conditions = [eq(divinations.isSaved, true)] as any[];
     if (opts.topic)  conditions.push(eq(divinations.topic, opts.topic));
     if (opts.before) conditions.push(lt(divinations.savedAt, new Date(opts.before)));
+    if (opts.after)  conditions.push(gte(divinations.savedAt, new Date(opts.after)));
 
     const rows = await db.select().from(divinations)
       .where(and(...conditions))

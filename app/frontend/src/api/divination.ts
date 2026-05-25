@@ -85,10 +85,11 @@ export function saveCareNote(id: string, careNote: string): Promise<PublicDivina
 
 // ── 心境墙 API ────────────────────────────────────────────────────────────
 
-export function listWall(params?: { topic?: string; before?: string; limit?: number }): Promise<WallListResponse> {
+export function listWall(params?: { topic?: string; before?: string; after?: string; limit?: number }): Promise<WallListResponse> {
   const q = new URLSearchParams();
   if (params?.topic)  q.set('topic',  params.topic);
   if (params?.before) q.set('before', params.before);
+  if (params?.after)  q.set('after',  params.after);
   if (params?.limit)  q.set('limit',  String(params.limit));
   const qs = q.toString();
   return request<WallListResponse>(`/wall${qs ? '?' + qs : ''}`);

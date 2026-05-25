@@ -93,12 +93,13 @@ export class WallController {
   async list(
     @Query('topic')  topic?:    string,
     @Query('before') before?:   string,
+    @Query('after')  after?:    string,
     @Query('limit')  limitStr?: string,
   ): Promise<{ items: WallCard[]; hasMore: boolean; nextCursor: string | null }> {
     const limit = Math.min(Number(limitStr) || 20, 50);
 
     // listWall 内部取 limit+1 来判断 hasMore
-    const rows = await this.store.listWall({ topic, before, limit });
+    const rows = await this.store.listWall({ topic, before, after, limit });
 
     const hasMore = rows.length > limit;
     const page    = hasMore ? rows.slice(0, limit) : rows;

@@ -7,13 +7,27 @@
       <p class="wall-view__subtitle">你保存过的那些时刻</p>
     </header>
 
-    <!-- 主题筛选 chip -->
-    <div class="wall-view__filters">
+    <!-- 筛选条：「全部 ▼」时间下拉 + 角度 chips（统一 flex-wrap，手机自动换行） -->
+    <div class="wall-view__chips">
+      <!-- 时间下拉触发 -->
       <button
-        class="wall-view__chip"
-        :class="{ 'is-active': activeTopic === '' }"
-        @click="setTopic('')"
-      >全部</button>
+        class="wall-view__chip wall-view__time-btn"
+        :class="{ 'is-open': showTimeDropdown }"
+        @click="showTimeDropdown = !showTimeDropdown"
+        aria-label="时间筛选"
+      >
+        全部
+        <svg
+          class="wall-view__caret"
+          :class="{ 'is-flipped': showTimeDropdown }"
+          viewBox="0 0 10 6" width="9" height="6" aria-hidden="true"
+        >
+          <path d="M1 1 L5 5 L9 1" fill="none" stroke="currentColor"
+                stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
+      <!-- 角度 chips -->
       <button
         v-for="t in TOPICS"
         :key="t"
@@ -21,6 +35,33 @@
         :class="{ 'is-active': activeTopic === t }"
         @click="setTopic(t)"
       >{{ t }}</button>
+    </div>
+
+    <!-- 时间下拉面板（点「全部 ▼」展开） -->
+    <div v-if="showTimeDropdown" class="wall-view__dropdown">
+      <div class="wall-view__dropdown-head">
+        <p class="wall-view__dropdown-label">时间</p>
+        <button
+          class="wall-view__dropdown-close"
+          @click="showTimeDropdown = false"
+          aria-label="收起"
+        >
+          收起
+          <svg viewBox="0 0 10 6" width="9" height="6" aria-hidden="true">
+            <path d="M1 5 L5 1 L9 5" fill="none" stroke="currentColor"
+                  stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+      <div class="wall-view__filters">
+        <button
+          v-for="r in TIME_RANGES"
+          :key="r.key"
+          class="wall-view__chip"
+          :class="{ 'is-active': activeTimeRange === r.key }"
+          @click="setTimeRange(r.key)"
+        >{{ r.label }}</button>
+      </div>
     </div>
 
     <!-- 加载中（首次） -->
@@ -67,11 +108,34 @@ import type { WallCard as WallCardType } from '@/api/types';
 
 const router = useRouter();
 
-const cards       = ref<WallCardType[]>([]);
-const activeTopic = ref<string>('');
-const nextCursor  = ref<string | null>(null);
-const hasMore     = ref(false);
-const loading     = ref(false);
+// ── 时间筛选区间 ─────────────────────────────────────────────
+type TimeRangeKey = 'all' | 'week' | 'month' | 'halfyear' | 'year';
+const TIME_RANGES: { key: TimeRangeKey; label: string }[] = [
+  { key: 'all',      label: '全部'     },
+  { key: 'week',     label: '最近一周' },
+  { key: 'month',    label: '最近一月' },
+  { key: 'halfyear', label: '最近半年' },
+  { key: 'year',     label: '今年'     },
+];
+
+/** 把区间 key 换成 ISO 时间下界（>=）。返回 undefined 表示不限。 */
+function rangeToAfter(key: TimeRangeKey): string | undefined {
+  if (key === 'all') return undefined;
+  const now = new Date();
+  if (key === 'year') {
+    return new Date(now.getFullYear(), 0, 1).toISOString();
+  }
+  const days = key === 'week' ? 7 : key === 'month' ? 30 : 180;
+  return new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+const cards            = ref<WallCardType[]>([]);
+const activeTopic      = ref<string>('');
+const activeTimeRange  = ref<TimeRangeKey>('week');   // 默认：最近一周
+const showTimeDropdown = ref(false);
+const nextCursor       = ref<string | null>(null);
+const hasMore          = ref(false);
+const loading          = ref(false);
 
 async function loadList(reset = false) {
   if (loading.value) return;
@@ -80,6 +144,7 @@ async function loadList(reset = false) {
     const res = await listWall({
       topic:  activeTopic.value || undefined,
       before: reset ? undefined : (nextCursor.value ?? undefined),
+      after:  rangeToAfter(activeTimeRange.value),
       limit:  20,
     });
     cards.value   = reset ? res.items : [...cards.value, ...res.items];
@@ -91,10 +156,18 @@ async function loadList(reset = false) {
 }
 
 function setTopic(topic: string) {
-  if (activeTopic.value === topic) return;
-  activeTopic.value = topic;
+  // 再次点击已激活的角度 → 取消，回到「全部」
+  activeTopic.value = activeTopic.value === topic ? '' : topic;
   nextCursor.value  = null;
   hasMore.value     = false;
+  loadList(true);
+}
+
+function setTimeRange(key: TimeRangeKey) {
+  if (activeTimeRange.value === key) return;
+  activeTimeRange.value = key;
+  nextCursor.value      = null;
+  hasMore.value         = false;
   loadList(true);
 }
 
@@ -148,12 +221,76 @@ onMounted(() => loadList(true));
   margin: 0;
 }
 
-/* ── 筛选条（自适应换行） ─────────────── */
+/* ── 筛选条：时间下拉触发 + 角度 chips（自动换行） ─── */
+.wall-view__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+/* 「全部 ▼」时间下拉触发按钮 */
+.wall-view__time-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 500;
+}
+.wall-view__caret {
+  transition: transform 0.2s ease;
+  display: block;
+}
+.wall-view__caret.is-flipped {
+  transform: rotate(180deg);
+}
+.wall-view__time-btn.is-open {
+  background: #5F6B4C;
+  color: #FFFFFF;
+  border-color: #5F6B4C;
+}
+
+/* 时间下拉面板 */
+.wall-view__dropdown {
+  background: #FFFCF6;
+  border: 0.5px solid #E5E2D8;
+  border-radius: 12px;
+  padding: 14px 16px 16px;
+  margin-bottom: 16px;
+}
+.wall-view__dropdown-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.wall-view__dropdown-label {
+  font-size: 12px;
+  color: #888780;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+.wall-view__dropdown-close {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 4px 2px;
+  font-size: 12px;
+  color: #888780;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.3px;
+}
+.wall-view__dropdown-close:hover {
+  color: #5F5E5A;
+}
+
+/* 面板内 chip：自动换行 */
 .wall-view__filters {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 20px;
 }
 
 .wall-view__chip {
