@@ -93,10 +93,16 @@ function proceed() {
   gap: 12px;
 }
 .topic-card {
+  position: relative;
+  overflow: hidden;
   background: var(--c-paper);
   border: 1px solid var(--c-line);
   border-radius: var(--r-lg);
   padding: 20px 16px;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
   cursor: pointer;
   text-align: left;
   transition: transform 0.15s ease, background 0.15s ease;
@@ -105,20 +111,27 @@ function proceed() {
 .topic-card:hover  { background: #FFFFFF; }
 .topic-card:active { transform: scale(0.98); }
 
-/* Mobile: subtle left accent bar, one colour per topic */
+/* Mobile: 左侧装饰条用 ::before 贴合圆角 */
 @media (max-width: 480px) {
-  .topic-card:nth-child(1) { border-left: 2px solid #8B9BB0; } /* 工作与压力 — 蓝灰 */
-  .topic-card:nth-child(2) { border-left: 2px solid #C4907A; } /* 关系与情感 — 暖陶 */
-  .topic-card:nth-child(3) { border-left: 2px solid #8AA08A; } /* 自我与成长 — 鼠尾草绿 */
-  .topic-card:nth-child(4) { border-left: 2px solid #B8A06A; } /* 选择与犹豫 — 琥珀 */
-  .topic-card:nth-child(5) { border-left: 2px solid #9D92B8; } /* 失落与疗愈 — 薰衣草 */
-  .topic-card:nth-child(6) { border-left: 2px solid #7AA8A0; } /* 焦虑与平静 — 浅青 */
+  .topic-card::before {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0; left: 0;
+    width: 3px;
+  }
+  .topic-card:nth-child(1)::before { background: #8B9BB0; } /* 工作与压力 — 蓝灰 */
+  .topic-card:nth-child(2)::before { background: #C4907A; } /* 关系与情感 — 暖陶 */
+  .topic-card:nth-child(3)::before { background: #8AA08A; } /* 自我与成长 — 鼠尾草绿 */
+  .topic-card:nth-child(4)::before { background: #B8A06A; } /* 选择与犹豫 — 琥珀 */
+  .topic-card:nth-child(5)::before { background: #9D92B8; } /* 失落与疗愈 — 薰衣草 */
+  .topic-card:nth-child(6)::before { background: #7AA8A0; } /* 焦虑与平静 — 浅青 */
 }
+
 .topic-card__title {
   font-size: 16px;
   font-weight: 500;
   color: var(--c-ink);
-  letter-spacing: 1.5px;
+  letter-spacing: 0.04em;
   margin-bottom: 6px;
 }
 .topic-card__desc {
