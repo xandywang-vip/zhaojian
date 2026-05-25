@@ -20,16 +20,29 @@ function getCardOneLine(r: DivinationRecord): string {
   return '一次照见。';
 }
 
-// ── 日期标签：YYYY.MM.DD 周X HH:MM ──────────────────────────────────────────
+// ── 日期标签：YYYY.MM.DD · 周X{时段} ─────────────────────────────────────────
+// 以北京时间（UTC+8）为准；UI 只展示时段词，不暴露精确分钟
 function dateLabel(iso: string): string {
-  const d = new Date(iso);
+  const d   = new Date(iso);
+  // 转 CST
+  const cst = new Date(d.getTime() + 8 * 60 * 60 * 1000);
   const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
-  const y   = d.getFullYear();
-  const m   = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const hh  = String(d.getHours()).padStart(2, '0');
-  const mm  = String(d.getMinutes()).padStart(2, '0');
-  return `${y}.${m}.${day} 周${weekdays[d.getDay()]} ${hh}:${mm}`;
+  const y   = cst.getUTCFullYear();
+  const m   = String(cst.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(cst.getUTCDate()).padStart(2, '0');
+  const h   = cst.getUTCHours();
+  const wd  = weekdays[cst.getUTCDay()];
+
+  const period =
+    h < 5  ? '深夜'  :
+    h < 8  ? '清晨'  :
+    h < 12 ? '上午'  :
+    h < 14 ? '午后'  :
+    h < 18 ? '下午'  :
+    h < 20 ? '傍晚'  :
+    h < 23 ? '晚上'  : '深夜';
+
+  return `${y}.${m}.${day} · 周${wd}${period}`;
 }
 
 // ── DTO ────────────────────────────────────────────────────────────────────

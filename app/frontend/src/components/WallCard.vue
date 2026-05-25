@@ -11,19 +11,19 @@
 
     <!-- 卡片内容 -->
     <div class="wall-card__body">
-      <p class="wall-card__time">{{ card.dateLabel }}</p>
+      <!-- 顶部：时间（左）+ 主题标签（右） -->
+      <div class="wall-card__head">
+        <p class="wall-card__time">{{ card.dateLabel }}</p>
+        <span class="wall-card__topic">{{ card.topic }}</span>
+      </div>
 
       <!-- 金句（始终显示） -->
       <p class="wall-card__oneliner">{{ card.oneLiner }}</p>
 
-      <!-- 追问 + 回答（都存在才展示） -->
+      <!-- 追问 + 回答：引述格式 -->
       <div v-if="card.question && card.answer" class="wall-card__qa">
-        <p class="wall-card__qa-question">Q · {{ card.question }}</p>
-        <p class="wall-card__qa-answer">A · {{ card.answer }}</p>
-      </div>
-
-      <div class="wall-card__meta">
-        <span class="wall-card__topic">{{ card.topic }}</span>
+        <p class="wall-card__qa-question">「{{ card.question }}」</p>
+        <p class="wall-card__qa-answer">那时你写下：{{ card.answer }}</p>
       </div>
     </div>
   </article>
@@ -112,12 +112,21 @@ const lowerSvg = computed(() => {
 
 .wall-card__body { position: relative; }
 
-/* 起卦时间：YYYY.MM.DD 周X HH:MM */
+/* 顶部：时间左 + 主题标签右 */
+.wall-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 14px;
+  gap: 6px;
+}
+
 .wall-card__time {
   font-size: 11px;
   color: #888780;
-  margin: 0 0 14px;
+  margin: 0;
   letter-spacing: 0.3px;
+  white-space: nowrap;
 }
 
 /* 金句：视觉中心 */
@@ -134,36 +143,45 @@ const lowerSvg = computed(() => {
   word-break: break-word;
 }
 
-/* 追问与回答 */
+/* 追问与回答：引述格式 */
 .wall-card__qa {
-  margin: 0 0 12px;
+  margin: 0 0 4px;
   padding: 10px 12px;
   background: rgba(95, 107, 76, 0.04);
   border-left: 2px solid rgba(95, 107, 76, 0.25);
   border-radius: 4px;
 }
-.wall-card__qa-question,
-.wall-card__qa-answer {
-  margin: 0;
+.wall-card__qa-question {
+  margin: 0 0 5px;
   font-size: 12.5px;
   line-height: 1.7;
+  color: #5F5E5A;
   letter-spacing: 0.2px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
+  font-style: italic;
 }
-.wall-card__qa-question { color: #6B6B65; margin-bottom: 4px; }
-.wall-card__qa-answer   { color: #2C2C2A; }
-
-.wall-card__meta {
-  display: flex;
-  align-items: center;
+.wall-card__qa-answer {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #888780;
+  letter-spacing: 0.2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
 }
 
+/* 主题标签（移至顶部右侧） */
 .wall-card__topic {
-  font-size: 11px;
-  color: #6B6B65;
+  font-size: 10.5px;
+  color: #888780;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 </style>
