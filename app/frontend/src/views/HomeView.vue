@@ -34,7 +34,6 @@ const timeIcon = computed(() => {
     <header class="brand-bar">
       <div class="brand-left">
         <div class="brand-title">照见</div>
-        <div class="brand-tag">观己 · 心安</div>
       </div>
       <button class="brand-icon" aria-label="时间">{{ timeIcon }}</button>
     </header>
@@ -52,7 +51,7 @@ const timeIcon = computed(() => {
         <span class="hook-q-main">心里转了很久了？</span>
       </p>
       <div class="hook-divider" />
-      <p class="hook-hint">不用急着找答案，先安静下来。<br />换一个角度，<em>照见此刻的自己</em>。</p>
+      <p class="hook-hint">不用急着找答案，先安静下来。<br />换一个视角，<em>看看此刻的自己</em>。</p>
     </article>
 
     <!-- Layer 4 — actions -->
@@ -77,7 +76,7 @@ const timeIcon = computed(() => {
   justify-content: space-between;
   padding-top: 8px;
 }
-.brand-left { display: flex; flex-direction: column; }
+.brand-left { display: flex; align-items: center; }
 .brand-title {
   font-family: var(--font-serif, 'Noto Serif SC', 'STSong', serif);
   font-size: 28px;

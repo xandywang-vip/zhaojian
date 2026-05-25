@@ -40,8 +40,8 @@ function proceed() {
 <template>
   <main class="page">
     <button class="back" @click="router.back()">← 返回</button>
-    <h2 class="page-title">此刻你想看看哪一面？</h2>
-    <p class="muted small">选一个最贴近你当下感受的主题，我们为你随机生成一个角度。</p>
+    <h2 class="page-title">此刻最在心里的是哪件事？</h2>
+    <p class="muted small">选一个最贴近你当下感受的主题，我们陪你换个视角看看。</p>
 
     <div class="topic-grid">
       <button
@@ -55,20 +55,14 @@ function proceed() {
       </button>
     </div>
 
-    <p class="disclaimer-text" style="margin-top: 28px">
-      慢慢来。选一个你最想停下来看看的方向。
-    </p>
 
     <!-- 心念聚焦 modal -->
     <transition name="fade">
       <div v-if="modalOpen" class="modal-mask" @click.self="closeModal">
         <div class="modal-card">
-          <h3 class="modal-title">先给自己一个安静的片刻</h3>
-          <p class="modal-body">
-            轻轻闭上眼睛，做三次深呼吸。<br>
-            不用想具体的事情，只是回到此刻的身体感受。
-          </p>
-          <button class="btn btn-primary modal-btn" @click="proceed">准备好了</button>
+          <h3 class="modal-title">先安静片刻。</h3>
+          <p class="modal-body">做三次深呼吸。</p>
+          <button class="btn btn-primary modal-btn" @click="proceed">好</button>
         </div>
       </div>
     </transition>

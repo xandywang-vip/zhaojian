@@ -23,7 +23,7 @@ function acknowledge() {
       </transition>
     </router-view>
     <footer class="app-footer">
-      照见内心，观己心安
+      让心里转的事，慢一点
     </footer>
     <DisclaimerDialog v-if="showDisclaimer" @ack="acknowledge" />
   </div>

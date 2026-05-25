@@ -74,8 +74,11 @@ export function castByTime(input: { datetime?: string } = {}): CastByTimeResult 
     throw new Error(`Invalid datetime: ${input.datetime}`);
   }
 
-  const hour   = date.getHours();
-  const minute = date.getMinutes();
+  // 起卦以北京时间（UTC+8）为准；Render 等服务器在 UTC，getHours() 会差 8 小时
+  const CST_OFFSET_MS = 8 * 60 * 60 * 1000;
+  const cst    = new Date(date.getTime() + CST_OFFSET_MS);
+  const hour   = cst.getUTCHours();
+  const minute = cst.getUTCMinutes();
 
   const a = normalizeMod(hour,          8);   // 上卦序号
   const b = normalizeMod(minute,        8);   // 下卦序号

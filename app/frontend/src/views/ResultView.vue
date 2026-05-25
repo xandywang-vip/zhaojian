@@ -129,7 +129,7 @@ onMounted(() => { load(); });
 
     <template v-else-if="data">
       <!-- Top -->
-      <div class="topic-hat">今日视角 · {{ data.topic }}</div>
+      <div class="topic-hat">此刻视角 · {{ data.topic }}</div>
 
       <!-- 4-section card -->
       <article class="card">
@@ -169,7 +169,7 @@ onMounted(() => { load(); });
           v-if="data.question"
           v-model="answerText"
           class="ask-input"
-          placeholder="对自己说点真心话…"
+          placeholder="想到什么就写什么，可短可长。"
           rows="4"
           maxlength="500"
           :disabled="isSaved || saving"
@@ -195,7 +195,7 @@ onMounted(() => { load(); });
       <!-- ── 页脚（温馨提示弱化） ── -->
       <footer class="page-foot">
         <p class="foot-disclaimer">
-          仅供参考。若你正经历持续的痛苦，请联系专业的心理援助。
+          仅供参考。若你正经历持续的痛苦，请记得身边专业的人可以帮你。
         </p>
         <span class="foot-link" @click="router.push('/')">返回首页 →</span>
       </footer>
@@ -293,14 +293,16 @@ onMounted(() => { load(); });
 }
 .section--oneline { padding-top: 18px; }
 .oneline {
-  margin: 0;
+  margin: 0 8px;
   font-size: 16px;
   font-weight: 500;
   color: var(--c-ink);
   text-align: center;
   letter-spacing: 1.5px;
   line-height: 1.8;
-  padding: 14px 8px;
+  padding: 18px 12px;
+  border-top: 1px solid var(--c-line);
+  border-bottom: 1px solid var(--c-line);
 }
 
 /* Feedback */

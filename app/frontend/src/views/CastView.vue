@@ -65,10 +65,10 @@ onUnmounted(() => {
   <main class="page">
     <!-- Full-screen calm overlay -->
     <div v-if="!error && !submitting" class="calm-overlay" @click="finish">
-      <div class="calm-dot" />
+      <div class="calm-ring" />
       <div class="calm-content">
-        <p class="calm-guide">三次呼吸后进入</p>
-        <p class="calm-main">回到内心寂静的本源，<br>聆听万物相连的呼吸。</p>
+        <p class="calm-guide">三次呼吸之后开始</p>
+        <p class="calm-main">让心慢一点，<br>再听自己说话。</p>
         <p class="calm-countdown">{{ countdown }} …</p>
       </div>
       <p class="calm-tap">轻触屏幕跳过</p>
@@ -102,14 +102,16 @@ onUnmounted(() => {
 }
 
 @keyframes calm-breathe {
-  0%, 100% { transform: scale(1); opacity: 0.55; }
-  50%       { transform: scale(10); opacity: 0.9; }
+  0%, 100% { transform: scale(1); opacity: 0.35; }
+  50%       { transform: scale(1.9); opacity: 0.7; }
 }
-.calm-dot {
-  width: 8px;
-  height: 8px;
+/* 细圆环：中性几何，无实心点 */
+.calm-ring {
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: #D4C9B8;
+  border: 1.5px solid #C8BDB0;
+  background: transparent;
   animation: calm-breathe 6s ease-in-out infinite;
   flex-shrink: 0;
 }
