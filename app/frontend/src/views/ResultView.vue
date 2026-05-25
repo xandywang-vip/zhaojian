@@ -110,6 +110,12 @@ async function handleSaveMoment() {
   }
 }
 
+function autoResize(e: Event) {
+  const el = e.target as HTMLTextAreaElement;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 240) + 'px';
+}
+
 let toastTimer: ReturnType<typeof setTimeout> | null = null;
 function showToast(text: string) {
   toast.value = text;
@@ -128,11 +134,11 @@ onMounted(() => { load(); });
     <div v-else-if="error" class="error-text">{{ error }}</div>
 
     <template v-else-if="data">
-      <!-- Top -->
-      <div class="topic-hat">此刻视角 · {{ data.topic }}</div>
-
       <!-- 4-section card -->
       <article class="card">
+        <!-- 卡片主标题 -->
+        <div class="card-hat">此刻视角 · {{ data.topic }}</div>
+
         <section class="section">
           <h3 class="section-title">此刻</h3>
           <p class="section-body">{{ data.reading.present }}</p>
@@ -154,8 +160,8 @@ onMounted(() => { load(); });
       <div class="feedback">
         <span class="feedback-q">这个视角对你有启发吗？</span>
         <div class="feedback-btns">
-          <button class="feedback-btn" :class="{ 'is-active': feedback === 'up' }"   @click="chooseFeedback('up')">👍 有</button>
-          <button class="feedback-btn" :class="{ 'is-active': feedback === 'down' }" @click="chooseFeedback('down')">👎 没有</button>
+          <button class="feedback-btn" :class="{ 'is-active': feedback === 'up' }"   @click="chooseFeedback('up')">有启发</button>
+          <button class="feedback-btn" :class="{ 'is-active': feedback === 'down' }" @click="chooseFeedback('down')">还好</button>
         </div>
       </div>
 
@@ -170,9 +176,9 @@ onMounted(() => { load(); });
           v-model="answerText"
           class="ask-input"
           placeholder="想到什么就写什么，可短可长。"
-          rows="4"
           maxlength="500"
           :disabled="isSaved || saving"
+          @input="autoResize"
         />
         <p v-if="!isSaved && answerText.length > 0" class="ask-counter">{{ answerText.length }} / 500</p>
       </section>
@@ -200,40 +206,6 @@ onMounted(() => { load(); });
         <span class="foot-link" @click="router.push('/')">返回首页 →</span>
       </footer>
 
-      <!-- Debug panel — hexagram inspiration + cast trace -->
-      <div v-if="data.benGuaName || data.castTrace" class="debug-panel">
-        <div class="debug-label">DEBUG · 起卦过程</div>
-        <div v-if="data.benGuaName" class="debug-row">
-          <span class="debug-key">结果</span>
-          <span class="debug-val">
-            {{ data.benGuaName }}卦 {{ data.yaoPosName }}爻动 → {{ data.bianGuaName }}卦
-          </span>
-        </div>
-        <template v-if="data.castTrace">
-          <div class="debug-divider" />
-          <div class="debug-row">
-            <span class="debug-key">起卦时刻</span>
-            <span class="debug-val">{{ data.castTrace.castAt }}</span>
-          </div>
-          <div class="debug-row">
-            <span class="debug-key">时 / 分</span>
-            <span class="debug-val">{{ data.castTrace.hour }} 时  {{ data.castTrace.minute }} 分</span>
-          </div>
-          <div class="debug-divider" />
-          <div class="debug-row">
-            <span class="debug-key">上卦 a = hour mod 8</span>
-            <span class="debug-val">{{ data.castTrace.hour }} mod 8 = {{ data.castTrace.a }} → {{ data.castTrace.upperTrigramName }}</span>
-          </div>
-          <div class="debug-row">
-            <span class="debug-key">下卦 b = minute mod 8</span>
-            <span class="debug-val">{{ data.castTrace.minute }} mod 8 = {{ data.castTrace.b }} → {{ data.castTrace.lowerTrigramName }}</span>
-          </div>
-          <div class="debug-row">
-            <span class="debug-key">动爻 c = (hour+minute) mod 6</span>
-            <span class="debug-val">({{ data.castTrace.hour }}+{{ data.castTrace.minute }}) mod 6 = {{ data.castTrace.c }}</span>
-          </div>
-        </template>
-      </div>
     </template>
 
     <transition name="fade">
@@ -260,12 +232,13 @@ onMounted(() => { load(); });
 }
 .error-text { color: var(--c-warn); text-align: center; padding: 30px 0; }
 
-.topic-hat {
-  text-align: center;
-  font-size: 13px;
+/* 卡片主标题（原 topic-hat，移入卡片内） */
+.card-hat {
+  font-size: 12px;
   color: var(--c-muted);
   letter-spacing: 2px;
-  margin-bottom: 14px;
+  margin-bottom: 18px;
+  text-align: center;
 }
 
 /* Reading card */
@@ -273,17 +246,30 @@ onMounted(() => { load(); });
   background: var(--c-paper);
   border: 1px solid var(--c-line);
   border-radius: var(--r-lg);
-  padding: 24px 22px;
+  padding: 22px 22px 20px;
   box-shadow: var(--shadow-soft);
 }
 .section { padding: 14px 0; }
+
+/* 覆盖全局 section-title 的 flex 两侧细线，改为标题下方一条短装饰线 */
 .section-title {
-  font-size: 13px;
+  font-size: 12px;
   color: #9E7B6B;
   letter-spacing: 4px;
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   font-weight: 500;
+  display: block;          /* 重置全局 flex */
 }
+.section-title::before { content: none; }  /* 去掉全局左线 */
+.section-title::after {
+  content: '';
+  display: block;
+  width: 20px;
+  height: 1px;
+  background: #C8BDB0;
+  margin-top: 6px;
+}
+
 .section-body {
   margin: 0;
   font-size: 15px;
@@ -291,7 +277,17 @@ onMounted(() => { load(); });
   color: #4B4B4B;
   letter-spacing: 0.3px;
 }
-.section--oneline { padding-top: 18px; }
+
+/* 金句区 */
+.section--oneline { padding-top: 32px; }
+.section--oneline::before {
+  content: '';
+  display: block;
+  width: 24px;
+  height: 1px;
+  background: #C8BDB0;
+  margin: 0 auto 20px;
+}
 .oneline {
   margin: 0 8px;
   font-size: 16px;
@@ -300,14 +296,13 @@ onMounted(() => { load(); });
   text-align: center;
   letter-spacing: 1.5px;
   line-height: 1.8;
-  padding: 18px 12px;
-  border-top: 1px solid var(--c-line);
+  padding: 0 12px 20px;
   border-bottom: 1px solid var(--c-line);
 }
 
 /* Feedback */
 .feedback {
-  margin-top: 16px;
+  margin-top: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -377,7 +372,10 @@ onMounted(() => { load(); });
   padding: 12px 14px;
   line-height: 1.8;
   letter-spacing: 0.3px;
-  resize: vertical;
+  resize: none;
+  overflow: hidden;
+  min-height: 52px;
+  height: 52px;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -461,32 +459,6 @@ onMounted(() => { load(); });
 }
 .foot-link:hover { color: var(--c-muted); }
 
-/* Debug panel */
-.debug-panel {
-  margin-top: 24px;
-  padding: 14px 16px;
-  border: 1px dashed #C4B8AC;
-  border-radius: var(--r-md);
-  background: rgba(212, 201, 184, 0.12);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-.debug-label {
-  font-size: 10px;
-  letter-spacing: 2px;
-  color: #9E7B6B;
-  margin-bottom: 8px;
-  opacity: 0.7;
-}
-.debug-divider { border-top: 1px dashed #C4B8AC; margin: 8px 0; opacity: 0.5; }
-.debug-row {
-  display: flex; gap: 8px; align-items: baseline;
-  margin-bottom: 5px; flex-wrap: wrap;
-}
-.debug-key {
-  font-size: 10px; color: #9E7B6B; letter-spacing: 0.5px;
-  white-space: nowrap; min-width: 140px; flex-shrink: 0;
-}
-.debug-val { font-size: 11.5px; color: #6B5848; letter-spacing: 0.5px; word-break: break-all; }
 
 /* Toast */
 .toast {

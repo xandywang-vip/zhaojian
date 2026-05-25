@@ -99,13 +99,20 @@ function proceed() {
   padding: 20px 16px;
   cursor: pointer;
   text-align: left;
-  transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+  transition: transform 0.15s ease, background 0.15s ease;
   font-family: inherit;
 }
-.topic-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-soft);
-  border-color: var(--c-accent);
+.topic-card:hover  { background: #FFFFFF; }
+.topic-card:active { transform: scale(0.98); }
+
+/* Mobile: subtle left accent bar, one colour per topic */
+@media (max-width: 480px) {
+  .topic-card:nth-child(1) { border-left: 2px solid #8B9BB0; } /* 工作与压力 — 蓝灰 */
+  .topic-card:nth-child(2) { border-left: 2px solid #C4907A; } /* 关系与情感 — 暖陶 */
+  .topic-card:nth-child(3) { border-left: 2px solid #8AA08A; } /* 自我与成长 — 鼠尾草绿 */
+  .topic-card:nth-child(4) { border-left: 2px solid #B8A06A; } /* 选择与犹豫 — 琥珀 */
+  .topic-card:nth-child(5) { border-left: 2px solid #9D92B8; } /* 失落与疗愈 — 薰衣草 */
+  .topic-card:nth-child(6) { border-left: 2px solid #7AA8A0; } /* 焦虑与平静 — 浅青 */
 }
 .topic-card__title {
   font-size: 16px;
@@ -126,12 +133,12 @@ function proceed() {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(40, 30, 20, 0.45);
+  background: rgba(242, 239, 231, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
 }
 .modal-card {
   background: #F9F5F0;
@@ -158,7 +165,7 @@ function proceed() {
 }
 .modal-btn {
   letter-spacing: 4px;
-  min-width: 160px;
+  width: 65%;
 }
 
 .fade-enter-active, .fade-leave-active { transition: opacity 0.22s; }

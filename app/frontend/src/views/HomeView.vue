@@ -50,7 +50,6 @@ const timeIcon = computed(() => {
         <span class="hook-q-lead">有些事，</span><br />
         <span class="hook-q-main">心里转了很久了？</span>
       </p>
-      <div class="hook-divider" />
       <p class="hook-hint">不用急着找答案，先安静下来。<br />换一个视角，<em>看看此刻的自己</em>。</p>
     </article>
 
@@ -58,9 +57,8 @@ const timeIcon = computed(() => {
     <button class="btn btn-primary btn-block primary-cta" @click="router.push('/ask')">
       照见此刻
     </button>
-    <button class="btn btn-ghost btn-block secondary-cta" @click="router.push('/wall')">
-      <span class="cta-main">心境墙</span>
-      <span class="cta-sub">你保存过的那些时刻</span>
+    <button class="secondary-cta" @click="router.push('/wall')">
+      心境墙 →
     </button>
 
   </main>
@@ -81,7 +79,7 @@ const timeIcon = computed(() => {
   font-family: var(--font-serif, 'Noto Serif SC', 'STSong', serif);
   font-size: 28px;
   color: var(--c-ink);
-  letter-spacing: 8px;
+  letter-spacing: 0.05em;
   line-height: 1;
 }
 .brand-tag {
@@ -149,12 +147,8 @@ const timeIcon = computed(() => {
   color: var(--c-ink);
   letter-spacing: 1px;
 }
-.hook-divider {
-  border-top: 1px dashed var(--c-line);
-  margin: 18px 0 14px;
-}
 .hook-hint {
-  margin: 0;
+  margin: 26px 0 0;
   font-size: 13px;
   color: var(--c-muted);
   letter-spacing: 0.4px;
@@ -168,15 +162,20 @@ const timeIcon = computed(() => {
 /* ---------- Layer 4 · actions ---------- */
 .primary-cta { letter-spacing: 2px; }
 .secondary-cta {
-  margin-top: 12px;
-  letter-spacing: 2px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 13px 16px;
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  background: none;
+  border: none;
+  padding: 6px 0;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--c-ink-soft);
+  letter-spacing: 1.5px;
+  text-align: center;
+  cursor: pointer;
+  transition: color 0.18s;
 }
-.cta-main { font-size: 14px; letter-spacing: 2px; }
-.cta-sub  { font-size: 11px; letter-spacing: 1px; color: var(--c-muted); }
+.secondary-cta:hover { color: var(--c-ink); }
 
 </style>

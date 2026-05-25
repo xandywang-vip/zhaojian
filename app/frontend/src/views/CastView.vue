@@ -20,13 +20,13 @@ function startCast() {
   castPromise = castDivination({ topic: store.ask.topic as any })
     .then((res) => res.id);
 
-  // One tick per breath cycle (6s); 3 ticks = 18s total
+  // 每 2 秒倒一次：3 → 2 → 1 → 进入
   calmTimer = setInterval(() => {
     countdown.value--;
     if (countdown.value <= 0) {
       finish();
     }
-  }, 6000);
+  }, 2000);
 }
 
 async function finish() {
@@ -65,12 +65,20 @@ onUnmounted(() => {
   <main class="page">
     <!-- Full-screen calm overlay -->
     <div v-if="!error && !submitting" class="calm-overlay" @click="finish">
-      <div class="calm-ring" />
-      <div class="calm-content">
-        <p class="calm-guide">三次呼吸之后开始</p>
-        <p class="calm-main">让心慢一点，<br>再听自己说话。</p>
-        <p class="calm-countdown">{{ countdown }} …</p>
+      <!-- 圆圈 + 引导文字贴近 -->
+      <div class="calm-top">
+        <div class="calm-ring" />
+        <p class="calm-guide">三次深呼吸之后开始</p>
       </div>
+
+      <!-- 正文 -->
+      <p class="calm-main">让心慢一点，<br>再听自己说话。</p>
+
+      <!-- 纯数字倒计时，淡入淡出 -->
+      <transition name="fade-num" mode="out-in">
+        <span :key="countdown" class="calm-countdown">{{ countdown }}</span>
+      </transition>
+
       <p class="calm-tap">轻触屏幕跳过</p>
     </div>
 
@@ -98,14 +106,22 @@ onUnmounted(() => {
   justify-content: center;
   cursor: pointer;
   user-select: none;
-  gap: 40px;
+  gap: 48px;
 }
 
 @keyframes calm-breathe {
   0%, 100% { transform: scale(1); opacity: 0.35; }
   50%       { transform: scale(1.9); opacity: 0.7; }
 }
-/* 细圆环：中性几何，无实心点 */
+
+/* 圆圈 + 引导文字紧靠一起 */
+.calm-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
 .calm-ring {
   width: 48px;
   height: 48px;
@@ -116,27 +132,38 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.calm-content { text-align: center; line-height: 1.6; }
 .calm-guide {
-  font-size: 14px;
+  font-size: 13px;
   color: #9E7B6B;
   letter-spacing: 2px;
-  margin: 0 0 18px;
+  margin: 0;
 }
+
 .calm-main {
   font-size: 20px;
   color: #3A3A3A;
   letter-spacing: 1.5px;
   line-height: 1.8;
-  margin: 0 0 24px;
-}
-.calm-countdown {
-  font-size: 24px;
-  color: #9E7B6B;
-  letter-spacing: 4px;
   margin: 0;
-  font-weight: 300;
+  text-align: center;
 }
+
+/* 纯数字倒计时 */
+.calm-countdown {
+  display: block;
+  font-size: 32px;
+  color: #C8BDB0;
+  font-weight: 300;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+/* 数字切换：淡入淡出 */
+.fade-num-enter-active,
+.fade-num-leave-active { transition: opacity 0.35s ease; }
+.fade-num-enter-from,
+.fade-num-leave-to     { opacity: 0; }
+
 .calm-tap {
   font-size: 12px;
   color: #9E7B6B;
