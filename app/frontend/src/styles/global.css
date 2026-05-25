@@ -5,6 +5,7 @@
   --c-paper:    #fbf8f2;
   --c-ink:      #2d2a26;
   --c-ink-soft: #4a4540;
+  --c-btn:      #3D3530;       /* 主按钮深棕墨色 */
   --c-muted:    #8a8378;
   --c-line:     #d8d1c4;
   --c-accent:   #6b7a5a;       /* 远山青 */
@@ -96,9 +97,9 @@ a { color: inherit; text-decoration: none; }
 .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-card); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .btn-primary {
-  background: var(--c-ink);
+  background: var(--c-btn);
   color: var(--c-paper);
-  border-color: var(--c-ink);
+  border-color: var(--c-btn);
 }
 .btn-ghost {
   background: transparent;
