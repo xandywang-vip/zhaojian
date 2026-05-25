@@ -1,10 +1,22 @@
 import type { CastBody, PublicDivination, WallCard, WallFullCard, WallListResponse } from './types';
 
+// ── 匿名设备 ID（localStorage 持久化，跨 session 稳定）────────────────────────
+const DEVICE_ID_KEY = 'yijian_device_id';
+function getDeviceId(): string {
+  let id = localStorage.getItem(DEVICE_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(DEVICE_ID_KEY, id);
+  }
+  return id;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      'X-Device-ID':  getDeviceId(),
       ...(init?.headers || {}),
     },
   });

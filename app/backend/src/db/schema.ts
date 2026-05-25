@@ -40,6 +40,9 @@ export const divinations = pgTable(
     primaryImageryKey: varchar('primary_imagery_key', { length: 32 }),
     displayYaoText:    varchar('display_yao_text',    { length: 64 }),
 
+    // 匿名设备隔离
+    userId: varchar('user_id', { length: 64 }),
+
     // 时间戳
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -48,6 +51,9 @@ export const divinations = pgTable(
     savedAtIdx: index('idx_saved_at').on(t.isSaved, t.savedAt),
     // 历史记录查询索引
     createdAtIdx: index('idx_created_at').on(t.createdAt),
+    // 设备隔离索引
+    userSavedAtIdx:   index('idx_user_id_saved_at').on(t.userId, t.savedAt),
+    userCreatedAtIdx: index('idx_user_id_created_at').on(t.userId, t.createdAt),
   }),
 );
 

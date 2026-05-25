@@ -13,6 +13,7 @@ import type { CastTrace } from '../engine/casting';
 // ── 业务对象类型（全局复用）─────────────────────────────────────────────────
 export interface DivinationRecord {
   id: string;
+  userId?: string | null;
   topic: string;
   benGuaName?:  string;
   bianGuaName?: string;
@@ -39,6 +40,7 @@ export interface DivinationRecord {
 function rowToRecord(row: DivinationRow): DivinationRecord {
   return {
     id:               row.id,
+    userId:           row.userId ?? null,
     topic:            row.topic,
     benGuaName:       row.benGuaName  ?? undefined,
     bianGuaName:      row.bianGuaName ?? undefined,
@@ -68,6 +70,7 @@ export class DivinationStore {
     partial: Omit<DivinationRecord, 'id' | 'createdAt'>,
   ): Promise<DivinationRecord> {
     const [row] = await db.insert(divinations).values({
+      userId:            partial.userId ?? null,
       topic:             partial.topic,
       benGuaName:        partial.benGuaName,
       bianGuaName:       partial.bianGuaName,
@@ -132,8 +135,9 @@ export class DivinationStore {
     return row ? rowToRecord(row) : undefined;
   }
 
-  async list(): Promise<DivinationRecord[]> {
+  async list(userId?: string): Promise<DivinationRecord[]> {
     const rows = await db.select().from(divinations)
+      .where(userId ? eq(divinations.userId, userId) : undefined)
       .orderBy(desc(divinations.createdAt));
     return rows.map(rowToRecord);
   }
@@ -150,6 +154,7 @@ export class DivinationStore {
    * 取 limit+1 条：多出一条用来判断 hasMore，不返给前端。
    */
   async listWall(opts: {
+    userId?: string;
     topic?:  string;
     before?: string;   // savedAt 游标（ISO string，分页用）
     after?:  string;   // savedAt 下界（ISO string，时间筛选用）
@@ -158,6 +163,7 @@ export class DivinationStore {
     const limit = (opts.limit ?? 20) + 1;   // +1 for hasMore detection
 
     const conditions = [eq(divinations.isSaved, true)] as any[];
+    if (opts.userId) conditions.push(eq(divinations.userId, opts.userId));
     if (opts.topic)  conditions.push(eq(divinations.topic, opts.topic));
     if (opts.before) conditions.push(lt(divinations.savedAt, new Date(opts.before)));
     if (opts.after)  conditions.push(gte(divinations.savedAt, new Date(opts.after)));

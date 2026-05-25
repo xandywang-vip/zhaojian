@@ -80,7 +80,8 @@ export class DivinationController {
     const forwarded = req.headers?.['x-forwarded-for'];
     const ip = (typeof forwarded === 'string' ? forwarded.split(',')[0] : null)
       ?? req.ip ?? 'unknown';
-    const record = await this.service.castAndStore(dto, String(ip).trim());
+    const userId = req.headers?.['x-device-id'] as string | undefined;
+    const record = await this.service.castAndStore(dto, String(ip).trim(), userId);
     return project(record);
   }
 
@@ -91,8 +92,9 @@ export class DivinationController {
   }
 
   @Get('history')
-  async history(): Promise<PublicDivination[]> {
-    const records = await this.service.list();
+  async history(@Req() req: any): Promise<PublicDivination[]> {
+    const userId = req.headers?.['x-device-id'] as string | undefined;
+    const records = await this.service.list(userId);
     return records.map(project);
   }
 

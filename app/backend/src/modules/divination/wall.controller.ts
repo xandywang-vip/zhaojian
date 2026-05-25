@@ -7,7 +7,7 @@
  */
 import {
   Controller, Delete, Get,
-  NotFoundException, Param, Query,
+  NotFoundException, Param, Query, Req,
 } from '@nestjs/common';
 import { DivinationStore, DivinationRecord } from '../../common/store';
 
@@ -91,15 +91,17 @@ export class WallController {
    */
   @Get()
   async list(
+    @Req()           req:       any,
     @Query('topic')  topic?:    string,
     @Query('before') before?:   string,
     @Query('after')  after?:    string,
     @Query('limit')  limitStr?: string,
   ): Promise<{ items: WallCard[]; hasMore: boolean; nextCursor: string | null }> {
-    const limit = Math.min(Number(limitStr) || 20, 50);
+    const limit  = Math.min(Number(limitStr) || 20, 50);
+    const userId = req.headers?.['x-device-id'] as string | undefined;
 
     // listWall 内部取 limit+1 来判断 hasMore
-    const rows = await this.store.listWall({ topic, before, after, limit });
+    const rows = await this.store.listWall({ userId, topic, before, after, limit });
 
     const hasMore = rows.length > limit;
     const page    = hasMore ? rows.slice(0, limit) : rows;

@@ -36,7 +36,7 @@ export class DivinationService {
     dayMap.set(ip, count + 1);
   }
 
-  async castAndStore(dto: CastDto, clientIp = 'unknown'): Promise<DivinationRecord> {
+  async castAndStore(dto: CastDto, clientIp = 'unknown', userId?: string): Promise<DivinationRecord> {
     this.checkDailyLimit(clientIp);
 
     const core = cast({ method: 'time' });
@@ -70,6 +70,7 @@ export class DivinationService {
     });
 
     return this.store.create({
+      userId,
       topic: dto.topic,
       benGuaName,
       bianGuaName,
@@ -87,8 +88,8 @@ export class DivinationService {
     return this.store.get(id);
   }
 
-  async list(): Promise<DivinationRecord[]> {
-    return this.store.list();
+  async list(userId?: string): Promise<DivinationRecord[]> {
+    return this.store.list(userId);
   }
 
   async setFeedback(id: string, feedback: 'up' | 'down'): Promise<DivinationRecord | undefined> {
