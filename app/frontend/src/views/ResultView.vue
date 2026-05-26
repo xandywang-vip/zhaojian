@@ -130,7 +130,7 @@ onMounted(() => { load(); });
   <main class="page reading-page">
     <button class="back" @click="router.push('/')">← 回到首页</button>
 
-    <div v-if="loading" class="loading-state">照见浮现中…</div>
+    <div v-if="loading" class="loading-state">理一理…</div>
     <div v-else-if="error" class="error-text">{{ error }}</div>
 
     <template v-else-if="data">

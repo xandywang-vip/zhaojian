@@ -83,7 +83,7 @@ onUnmounted(() => {
     </div>
 
     <div v-if="submitting" class="loading-state">
-      <p>照见浮现中…</p>
+      <p>理一理…</p>
       <p v-if="slowNetwork" class="loading-slow">服务正在唤醒，稍候片刻…</p>
     </div>
 

@@ -33,7 +33,7 @@ const timeIcon = computed(() => {
     <!-- Layer 1 — brand bar -->
     <header class="brand-bar">
       <div class="brand-left">
-        <div class="brand-title">照见</div>
+        <div class="brand-title">理理</div>
       </div>
       <button class="brand-icon" aria-label="时间">{{ timeIcon }}</button>
     </header>
