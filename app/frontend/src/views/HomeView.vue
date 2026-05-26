@@ -33,7 +33,7 @@ const timeIcon = computed(() => {
     <!-- Layer 1 — brand bar -->
     <header class="brand-bar">
       <div class="brand-left">
-        <div class="brand-title">理理</div>
+        <h1 class="brand-title">理理<span class="brand-dot" aria-hidden="true"></span></h1>
       </div>
       <button class="brand-icon" aria-label="时间">{{ timeIcon }}</button>
     </header>
@@ -61,7 +61,7 @@ const timeIcon = computed(() => {
       心境墙 →
     </button>
 
-    <p class="home-footer">让心里转的事，慢一点</p>
+    <p class="home-footer">心里那事，理一理</p>
 
   </main>
 </template>
@@ -78,17 +78,26 @@ const timeIcon = computed(() => {
 }
 .brand-left { display: flex; align-items: center; }
 .brand-title {
-  font-family: var(--font-serif, 'Noto Serif SC', 'STSong', serif);
-  font-size: 28px;
-  color: var(--c-ink);
-  letter-spacing: 0.05em;
-  line-height: 1;
+  font-family: 'Noto Serif SC', 'Noto Serif CJK SC', '思源宋体', 'STSong', serif;
+  font-weight: 600;
+  font-size: 42px;
+  letter-spacing: 0.15em;
+  color: #2C2C2A;
+  line-height: 1.2;
+  position: relative;
+  display: inline-block;
+  margin: 0;
 }
-.brand-tag {
-  margin-top: 6px;
-  color: var(--c-muted);
-  font-size: 11.5px;
-  letter-spacing: 4px;
+.brand-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #A8453E;
+  position: relative;
+  top: -16px;
+  left: -2px;
+  vertical-align: top;
 }
 .brand-icon {
   border: 1px solid var(--c-line);
