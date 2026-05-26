@@ -84,7 +84,7 @@ function proceed() {
   font-weight: 500;
   letter-spacing: 1px;
 }
-.small { font-size: 13px; margin-top: 0; margin-bottom: 24px; line-height: 1.85; }
+.small { font-size: 13px; margin-top: 0; margin-bottom: 14px; line-height: 1.85; }
 
 /* Topic grid */
 .topic-grid {
