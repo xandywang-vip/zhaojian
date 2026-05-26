@@ -136,8 +136,10 @@ export class DivinationStore {
   }
 
   async list(userId?: string): Promise<DivinationRecord[]> {
+    // 安全防线：缺 userId 不返回任何记录
+    if (!userId) return [];
     const rows = await db.select().from(divinations)
-      .where(userId ? eq(divinations.userId, userId) : undefined)
+      .where(eq(divinations.userId, userId))
       .orderBy(desc(divinations.createdAt));
     return rows.map(rowToRecord);
   }
@@ -160,10 +162,15 @@ export class DivinationStore {
     after?:  string;   // savedAt 下界（ISO string，时间筛选用）
     limit?:  number;
   }): Promise<DivinationRecord[]> {
+    // 安全防线：缺 userId 不返回任何卡片，避免跨设备泄露
+    if (!opts.userId) return [];
+
     const limit = (opts.limit ?? 20) + 1;   // +1 for hasMore detection
 
-    const conditions = [eq(divinations.isSaved, true)] as any[];
-    if (opts.userId) conditions.push(eq(divinations.userId, opts.userId));
+    const conditions = [
+      eq(divinations.isSaved, true),
+      eq(divinations.userId, opts.userId),
+    ] as any[];
     if (opts.topic)  conditions.push(eq(divinations.topic, opts.topic));
     if (opts.before) conditions.push(lt(divinations.savedAt, new Date(opts.before)));
     if (opts.after)  conditions.push(gte(divinations.savedAt, new Date(opts.after)));

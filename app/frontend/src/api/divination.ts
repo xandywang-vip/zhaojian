@@ -121,7 +121,10 @@ export async function saveAnswer(
 ): Promise<PublicDivination> {
   const res = await fetch(`/api/divination/${id}/answer`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Device-ID':  getDeviceId(),
+    },
     body: JSON.stringify({ answer: answer ?? '' }),
   });
   if (res.status === 400) {
