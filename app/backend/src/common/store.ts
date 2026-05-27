@@ -6,6 +6,28 @@
  */
 import { Injectable } from '@nestjs/common';
 import { eq, and, desc, lt, gte, isNull, or } from 'drizzle-orm';
+
+// ── 时区工具：所有时间列均存北京时间（无时区） ────────────────────────────────
+const CST_OFFSET_MS = 8 * 60 * 60 * 1000;
+
+/**
+ * UTC ISO 字符串 → 北京时间 Date 对象
+ * postgres.js 写入 timestamp without timezone 时会忽略 Z，
+ * 用时间值本身当作本地时间存入。利用这一特性：
+ *   new Date(UTC + 8h).toISOString() = 'YYYY-MM-DDTHH:mm:ssZ'（Z 被忽略）
+ *   → DB 存 'YYYY-MM-DD HH:mm:ss'（北京时间）
+ */
+function utcToCST(utcIso: string): Date {
+  return new Date(new Date(utcIso).getTime() + CST_OFFSET_MS);
+}
+
+/**
+ * DB 读回的 timestamp without timezone Date
+ * → 带 +08:00 后缀的 ISO 字符串（供前后端正确解析时区）
+ */
+function rowDateToCST(d: Date): string {
+  return d.toISOString().replace('Z', '+08:00');
+}
 import { db } from '../db/client';
 import { divinations, type DivinationRow } from '../db/schema';
 import type { CastTrace } from '../engine/casting';
@@ -48,7 +70,7 @@ function rowToRecord(row: DivinationRow): DivinationRecord {
     yaoPosName:       row.yaoPosName  ?? undefined,
     castTrace:        (row.castTrace  as CastTrace | null) ?? null,
     isSaved:          row.isSaved,
-    savedAt:          row.savedAt     ? row.savedAt.toISOString()     : null,
+    savedAt:          row.savedAt     ? rowDateToCST(row.savedAt)     : null,
     careNote:         row.careNote    ?? null,
     primaryImageryKey: row.primaryImageryKey ?? null,
     displayYaoText:    row.displayYaoText    ?? null,
@@ -57,8 +79,8 @@ function rowToRecord(row: DivinationRow): DivinationRecord {
     question:         row.question        ?? null,
     questionSource:   row.questionSource  ?? null,
     answer:           row.answer          ?? null,
-    answeredAt:       row.answeredAt ? row.answeredAt.toISOString() : null,
-    createdAt:        row.createdAt.toISOString(),
+    answeredAt:       row.answeredAt ? rowDateToCST(row.answeredAt) : null,
+    createdAt:        rowDateToCST(row.createdAt),
   };
 }
 
@@ -124,9 +146,9 @@ export class DivinationStore {
     for (const [src, dst] of map) {
       if (patch[src] !== undefined) set[dst] = patch[src];
     }
-    // timestamp 字段需转 Date
-    if (patch.savedAt   !== undefined) set['savedAt']   = patch.savedAt   ? new Date(patch.savedAt)   : null;
-    if (patch.answeredAt !== undefined) set['answeredAt'] = patch.answeredAt ? new Date(patch.answeredAt) : null;
+    // timestamp 字段：UTC ISO → 北京时间 Date（列为 timestamp without timezone）
+    if (patch.savedAt    !== undefined) set['savedAt']    = patch.savedAt    ? utcToCST(patch.savedAt)    : null;
+    if (patch.answeredAt !== undefined) set['answeredAt']  = patch.answeredAt  ? utcToCST(patch.answeredAt)  : null;
 
     if (Object.keys(set).length === 0) return this.get(id);
 
@@ -172,10 +194,11 @@ export class DivinationStore {
       eq(divinations.userId, opts.userId),
     ] as any[];
     if (opts.topic)  conditions.push(eq(divinations.topic, opts.topic));
-    if (opts.before) conditions.push(lt(divinations.savedAt, new Date(opts.before)));
-    // savedAt 为 null 时仍保留该记录（NULL >= date 在 PG 里为 FALSE，会漏掉）
+    // cursor/filter 均为 UTC ISO（前端传来），先转成北京时间再与列值比较
+    if (opts.before) conditions.push(lt(divinations.savedAt,  utcToCST(opts.before)));
+    // savedAt 为 null 时仍保留（NULL >= date 在 PG 里为 FALSE 会漏掉）
     if (opts.after)  conditions.push(
-      or(isNull(divinations.savedAt), gte(divinations.savedAt, new Date(opts.after))) as any,
+      or(isNull(divinations.savedAt), gte(divinations.savedAt, utcToCST(opts.after))) as any,
     );
 
     const rows = await db.select().from(divinations)

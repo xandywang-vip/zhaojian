@@ -2,6 +2,7 @@ import {
   pgTable, uuid, varchar, text, integer, boolean,
   timestamp, jsonb, index,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 export const divinations = pgTable(
   'divinations',
@@ -29,11 +30,11 @@ export const divinations = pgTable(
     question:       text('question'),
     questionSource: varchar('question_source', { length: 32 }),
     answer:         text('answer'),
-    answeredAt:     timestamp('answered_at', { withTimezone: true }),
+    answeredAt:     timestamp('answered_at'),  // 无时区，存北京时间
 
     // 心境墙
     isSaved:           boolean('is_saved').notNull().default(false),
-    savedAt:           timestamp('saved_at',           { withTimezone: true }),
+    savedAt:           timestamp('saved_at'),  // 无时区，存北京时间
     careNote:          text('care_note'),
 
     // 起卦时计算写入的意象字段
@@ -43,8 +44,8 @@ export const divinations = pgTable(
     // 匿名设备隔离
     userId: varchar('user_id', { length: 64 }),
 
-    // 时间戳
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    // 时间戳（无时区，存北京时间；默认值显式用 Asia/Shanghai）
+    createdAt: timestamp('created_at').notNull().default(sql`(NOW() AT TIME ZONE 'Asia/Shanghai')`),
   },
   (t) => ({
     // 心境墙列表主查询索引
