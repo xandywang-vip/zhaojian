@@ -8,12 +8,17 @@ export async function onRequest(context) {
 
   try {
     const isBody = !['GET', 'HEAD'].includes(request.method);
+    // 透传关键 header（x-device-id 用于设备隔离，缺失会导致心境墙/历史记录为空）
+    const headers = {
+      'content-type':   request.headers.get('content-type') || 'application/json',
+      'x-forwarded-for': request.headers.get('cf-connecting-ip') || '',
+    };
+    const deviceId = request.headers.get('x-device-id');
+    if (deviceId) headers['x-device-id'] = deviceId;
+
     const response = await fetch(targetUrl, {
       method: request.method,
-      headers: {
-        'content-type': request.headers.get('content-type') || 'application/json',
-        'x-forwarded-for': request.headers.get('cf-connecting-ip') || '',
-      },
+      headers,
       body: isBody ? request.body : null,
     });
 
