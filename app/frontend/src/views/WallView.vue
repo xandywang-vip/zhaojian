@@ -131,7 +131,7 @@ function rangeToAfter(key: TimeRangeKey): string | undefined {
 
 const cards            = ref<WallCardType[]>([]);
 const activeTopic      = ref<string>('');
-const activeTimeRange  = ref<TimeRangeKey>('week');   // 默认：最近一周
+const activeTimeRange  = ref<TimeRangeKey>('all');    // 默认：全部
 const showTimeDropdown = ref(false);
 const nextCursor       = ref<string | null>(null);
 const hasMore          = ref(false);

@@ -5,7 +5,7 @@
  * 但全部变为 async，调用方需 await。
  */
 import { Injectable } from '@nestjs/common';
-import { eq, and, desc, lt, gte } from 'drizzle-orm';
+import { eq, and, desc, lt, gte, isNull, or } from 'drizzle-orm';
 import { db } from '../db/client';
 import { divinations, type DivinationRow } from '../db/schema';
 import type { CastTrace } from '../engine/casting';
@@ -173,7 +173,10 @@ export class DivinationStore {
     ] as any[];
     if (opts.topic)  conditions.push(eq(divinations.topic, opts.topic));
     if (opts.before) conditions.push(lt(divinations.savedAt, new Date(opts.before)));
-    if (opts.after)  conditions.push(gte(divinations.savedAt, new Date(opts.after)));
+    // savedAt 为 null 时仍保留该记录（NULL >= date 在 PG 里为 FALSE，会漏掉）
+    if (opts.after)  conditions.push(
+      or(isNull(divinations.savedAt), gte(divinations.savedAt, new Date(opts.after))) as any,
+    );
 
     const rows = await db.select().from(divinations)
       .where(and(...conditions))
