@@ -158,6 +158,8 @@ onUnmounted(() => {
             {{ showExtraGuide ? '试试跟着圈圈的呼吸节奏' : '再来一次，跟着呼吸节奏' }}
           </p>
         </transition>
+
+        <p class="ritual-calm">让心慢一点，再听自己说话</p>
       </section>
     </transition>
 
@@ -321,6 +323,20 @@ onUnmounted(() => {
 }
 .stage-hint     { color: #B5B1A6; }
 .too-early-hint { color: #888780; }
+
+/* 底部装饰文字（从旧过场页保留的灵魂句） */
+.ritual-calm {
+  position: absolute;
+  bottom: 14px;
+  margin: 0;
+  font-size: 11px;
+  color: #C3BFB6;
+  letter-spacing: 0.18em;
+  font-family: inherit;
+  text-align: center;
+  pointer-events: none;
+  user-select: none;
+}
 
 /* 完成态 */
 .complete-stage {
