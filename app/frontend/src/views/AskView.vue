@@ -7,9 +7,6 @@ import { TOPICS, type Topic } from '../api/types';
 const router = useRouter();
 const store = useSessionStore();
 
-const selectedTopic = ref<Topic | null>(null);
-const modalOpen = ref(false);
-
 // Curated descriptions per topic — purely UI labels, no AI prompt impact
 const TOPIC_DESCRIPTIONS: Record<Topic, string> = {
   '工作与压力': '职业方向、效率拖延、倦怠',
@@ -20,20 +17,9 @@ const TOPIC_DESCRIPTIONS: Record<Topic, string> = {
   '焦虑与平静': '焦虑、过度思考、内在安定',
 };
 
-function openModal(t: Topic) {
-  selectedTopic.value = t;
-  modalOpen.value = true;
-}
-
-function closeModal() {
-  modalOpen.value = false;
-}
-
-function proceed() {
-  if (!selectedTopic.value) return;
-  store.setTopic(selectedTopic.value);
-  modalOpen.value = false;
-  router.push('/cast');
+function pickTopic(t: Topic) {
+  store.setTopic(t);
+  router.push('/ritual');
 }
 </script>
 
@@ -48,24 +34,12 @@ function proceed() {
         v-for="t in TOPICS"
         :key="t"
         class="topic-card"
-        @click="openModal(t)"
+        @click="pickTopic(t)"
       >
         <div class="topic-card__title">{{ t }}</div>
         <div class="topic-card__desc">{{ TOPIC_DESCRIPTIONS[t] }}</div>
       </button>
     </div>
-
-
-    <!-- 心念聚焦 modal -->
-    <transition name="fade">
-      <div v-if="modalOpen" class="modal-mask" @click.self="closeModal">
-        <div class="modal-card">
-          <h3 class="modal-title">先安静片刻。</h3>
-          <p class="modal-body">做三次深呼吸。</p>
-          <button class="btn btn-primary modal-btn" @click="proceed">好</button>
-        </div>
-      </div>
-    </transition>
   </main>
 </template>
 
@@ -141,46 +115,5 @@ function proceed() {
   line-height: 1.7;
 }
 
-/* Modal */
-.modal-mask {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  background: rgba(242, 239, 231, 0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  backdrop-filter: blur(8px);
-}
-.modal-card {
-  background: #F9F5F0;
-  border-radius: var(--r-lg);
-  padding: 36px 28px 28px;
-  max-width: 360px;
-  width: 100%;
-  text-align: center;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.15);
-}
-.modal-title {
-  font-size: 18px;
-  font-weight: 500;
-  color: #3A3A3A;
-  letter-spacing: 1.5px;
-  margin: 0 0 16px;
-}
-.modal-body {
-  font-size: 14px;
-  color: #4B4B4B;
-  line-height: 1.95;
-  letter-spacing: 0.5px;
-  margin: 0 0 28px;
-}
-.modal-btn {
-  letter-spacing: 4px;
-  width: 65%;
-}
 
-.fade-enter-active, .fade-leave-active { transition: opacity 0.22s; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>
